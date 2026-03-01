@@ -28,6 +28,16 @@ export const BREAKABLE_CHANCE_BASE = 0.15;
 export const MOVING_CHANCE_BASE = 0.1;
 export const BOOST_CHANCE_BASE = 0.08;
 
+// Fairness assists (hidden)
+export const COYOTE_TIME = 0.08; // 80ms
+export const JUMP_BUFFER_TIME = 0.1; // 100ms
+export const PLATFORM_HITBOX_PADDING = 6; // px extra on each side
+
+// Difficulty scaling per 1000 score
+export const DIFFICULTY_BREAKABLE_SCALE = 0.02; // +2% per 1000 score
+export const DIFFICULTY_MOVING_SCALE = 0.015;
+export const DIFFICULTY_LAVA_ACCEL_SCALE = 0.02;
+
 export const PERMANENT_UPGRADES = [
   {
     id: 'jumpHeight',
