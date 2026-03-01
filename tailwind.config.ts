@@ -13,6 +13,10 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        display: ['Orbitron', 'sans-serif'],
+        body: ['Exo 2', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -46,6 +50,16 @@ export default {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        lava: {
+          DEFAULT: "hsl(var(--lava))",
+          glow: "hsl(var(--lava-glow))",
+          dark: "hsl(var(--lava-dark))",
+        },
+        coin: "hsl(var(--coin))",
+        cave: {
+          DEFAULT: "hsl(var(--cave))",
+          light: "hsl(var(--cave-light))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
