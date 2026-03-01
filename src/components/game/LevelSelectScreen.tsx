@@ -27,37 +27,23 @@ const LevelSelectScreen = ({ onSelectLevel, onBack }: LevelSelectScreenProps) =>
                 key={level.id}
                 onClick={() => unlocked && onSelectLevel(level.id)}
                 disabled={!unlocked}
-                className={`glass-panel p-4 text-left transition-all duration-150 ${
+                className={`glass-panel p-3 text-left transition-all duration-150 ${
                   unlocked
                     ? 'hover:scale-105 active:scale-95 hover:border-primary/50 cursor-pointer'
                     : 'opacity-40 cursor-not-allowed'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl font-display font-black text-primary text-glow-primary">
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-xl font-display font-black text-primary text-glow-primary">
                     {unlocked ? level.id : '🔒'}
                   </span>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-display font-bold text-foreground text-sm truncate">
-                      {level.name}
-                    </h3>
-                    <p className="text-xs text-muted-foreground font-body">
-                      Ziel: {level.targetHeight}m
-                    </p>
-                  </div>
+                  <h3 className="font-display font-bold text-foreground text-xs truncate w-full text-center">
+                    {level.name}
+                  </h3>
+                  <p className="text-[10px] text-muted-foreground font-body">
+                    {level.targetHeight}m
+                  </p>
                 </div>
-                {unlocked && (
-                  <div className="mt-2 flex gap-1">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className={`h-1 flex-1 rounded-full ${
-                          i < Math.ceil(level.id / 2) ? 'bg-primary/60' : 'bg-muted'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                )}
               </button>
             );
           })}
