@@ -226,6 +226,9 @@ export class GameEngine {
     this.noSafeZoneTimer = NO_SAFE_ZONE_INTERVAL;
     this.inNoSafeZone = false;
     this.noSafeZoneDuration = 0;
+    this.lavaSurgeTimer = LAVA_SURGE_INTERVAL;
+    this.inLavaSurge = false;
+    this.lavaSurgeDuration = 0;
     this.screenShake = 0;
     this.doubleJumpFlashTimer = 0;
 
