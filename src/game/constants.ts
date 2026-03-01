@@ -12,8 +12,7 @@ export const PLATFORM_GAP_MAX = 120;
 export const PLATFORMS_BUFFER = 800;
 
 export const LAVA_INITIAL_SPEED = 30;
-export const LAVA_ACCELERATION = 0.15;
-export const LAVA_MAX_SPEED = 120;
+export const LAVA_ACCELERATION = 0.15; // legacy, unused by adaptive system
 
 export const COIN_RADIUS = 10;
 export const COIN_SPAWN_CHANCE = 0.35;
