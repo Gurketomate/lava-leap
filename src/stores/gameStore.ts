@@ -65,6 +65,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   nextUpgradeAt: 500,
   lavaProximity: 0,
   upgradeLevels: {},
+  phase: 1,
+  screenShake: 0,
   upgradeChoices: [],
 
   setScreen: (screen) => set({ screen }),
