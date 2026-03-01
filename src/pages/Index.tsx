@@ -19,8 +19,11 @@ const Index = () => {
   const engineRef = useRef<GameEngine | null>(null);
   const [upgradeChoices, setUpgradeChoices] = useState<PowerUp[]>([]);
 
+  const adStore = useAdStore();
+
   useEffect(() => {
     store.loadPersisted();
+    adStore.initSession();
   }, []);
 
   const getPermanentBonuses = useCallback(() => {
