@@ -44,6 +44,12 @@ const Index = () => {
     engine.onLavaProximity = (p: number) => {
       useGameStore.getState().setLavaProximity(p);
     };
+    engine.onPhaseChange = (phase: number) => {
+      useGameStore.getState().setPhase(phase);
+    };
+    engine.onScreenShake = (shake: number) => {
+      useGameStore.getState().setScreenShake(shake);
+    };
     engine.onGameOver = () => {
       useGameStore.getState().gameOver();
     };

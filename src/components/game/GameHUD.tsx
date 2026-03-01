@@ -1,10 +1,12 @@
 import { useGameStore } from '@/stores/gameStore';
 
 const GameHUD = () => {
-  const { score, coins, lavaProximity, activePowerUps } = useGameStore();
+  const { score, coins, lavaProximity, activePowerUps, phase, screenShake } = useGameStore();
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-10">
+    <div className="absolute inset-0 pointer-events-none z-10" style={{
+      transform: screenShake > 0 ? `translate(${(Math.random() - 0.5) * screenShake * 6}px, ${(Math.random() - 0.5) * screenShake * 6}px)` : undefined,
+    }}>
       {/* Score */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2">
         <div className="glass-panel px-6 py-2 text-center">
@@ -30,6 +32,15 @@ const GameHUD = () => {
               <span className="font-body text-foreground">{pu.stacks > 1 ? `x${pu.stacks}` : ''}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Phase indicator */}
+      {phase > 1 && (
+        <div className="absolute bottom-6 right-4">
+          <div className="glass-panel px-3 py-1 text-xs font-body text-muted-foreground">
+            Phase {phase}
+          </div>
         </div>
       )}
 

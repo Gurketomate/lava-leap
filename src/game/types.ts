@@ -11,7 +11,7 @@ export interface Player {
   jumpsRemaining: number;
 }
 
-export type PlatformType = 'normal' | 'breakable' | 'moving' | 'boost';
+export type PlatformType = 'normal' | 'breakable' | 'moving' | 'boost' | 'reward';
 
 export interface Platform {
   x: number;
@@ -79,4 +79,17 @@ export interface GameState {
   activePowerUps: PowerUp[];
   nextUpgradeAt: number;
   lavaProximity: number; // 0-1 for heat bar
+  phase: number; // current difficulty phase 1-5
+  screenShake: number; // 0-1 shake intensity
+}
+
+export interface DifficultyPhase {
+  normalChance: number;
+  breakableChance: number;
+  movingChance: number;
+  boostChance: number;
+  rewardChance: number;
+  platformWidthMod: number; // multiplier for platform width
+  lavaSpeedMod: number; // multiplier for lava speed
+  minTime: number; // seconds to enter this phase
 }

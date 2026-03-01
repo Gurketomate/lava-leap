@@ -15,6 +15,8 @@ interface GameStore {
   activePowerUps: PowerUp[];
   nextUpgradeAt: number;
   lavaProximity: number;
+  phase: number;
+  screenShake: number;
   upgradeLevels: UpgradeLevels;
   upgradeChoices: PowerUp[];
 
@@ -22,6 +24,8 @@ interface GameStore {
   setScore: (score: number) => void;
   setCoins: (coins: number) => void;
   setLavaProximity: (p: number) => void;
+  setPhase: (phase: number) => void;
+  setScreenShake: (shake: number) => void;
   addCoin: () => void;
   addPowerUp: (p: PowerUp) => void;
   setUpgradeChoices: (choices: PowerUp[]) => void;
@@ -61,12 +65,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
   nextUpgradeAt: 500,
   lavaProximity: 0,
   upgradeLevels: {},
+  phase: 1,
+  screenShake: 0,
   upgradeChoices: [],
 
   setScreen: (screen) => set({ screen }),
   setScore: (score) => set({ score }),
   setCoins: (coins) => set({ coins }),
   setLavaProximity: (lavaProximity) => set({ lavaProximity }),
+  setPhase: (phase) => set({ phase }),
+  setScreenShake: (screenShake) => set({ screenShake }),
   addCoin: () => set((s) => ({ coins: s.coins + 1 })),
   addPowerUp: (p) => set((s) => {
     const existing = s.activePowerUps.find((e) => e.type === p.type);
@@ -97,6 +105,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     activePowerUps: [],
     nextUpgradeAt: 500,
     lavaProximity: 0,
+    phase: 1,
+    screenShake: 0,
     upgradeChoices: [],
   }),
 
