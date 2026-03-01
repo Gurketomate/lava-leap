@@ -8,6 +8,7 @@ import PermanentShop from '@/components/game/PermanentShop';
 import LevelCompleteScreen from '@/components/game/LevelCompleteScreen';
 import LevelSelectScreen from '@/components/game/LevelSelectScreen';
 import { useGameStore } from '@/stores/gameStore';
+import { useAdStore } from '@/stores/adStore';
 import { GameEngine } from '@/game/GameEngine';
 import { LEVELS } from '@/game/constants';
 import { upgradeChosen } from '@/game/analytics';
