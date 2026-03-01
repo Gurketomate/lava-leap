@@ -7,6 +7,7 @@ import UpgradeMenu from '@/components/game/UpgradeMenu';
 import PermanentShop from '@/components/game/PermanentShop';
 import { useGameStore } from '@/stores/gameStore';
 import { GameEngine } from '@/game/GameEngine';
+import { upgradeChosen } from '@/game/analytics';
 import type { PowerUp } from '@/game/types';
 
 const Index = () => {
