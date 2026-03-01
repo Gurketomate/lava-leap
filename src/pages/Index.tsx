@@ -8,8 +8,9 @@ import PermanentShop from '@/components/game/PermanentShop';
 import LevelCompleteScreen from '@/components/game/LevelCompleteScreen';
 import LevelSelectScreen from '@/components/game/LevelSelectScreen';
 import { useGameStore } from '@/stores/gameStore';
+import { useAdStore } from '@/stores/adStore';
 import { GameEngine } from '@/game/GameEngine';
-import { LEVELS } from '@/game/constants';
+import { LEVELS, JUMP_FORCE } from '@/game/constants';
 import { upgradeChosen } from '@/game/analytics';
 import type { PowerUp } from '@/game/types';
 
@@ -18,8 +19,11 @@ const Index = () => {
   const engineRef = useRef<GameEngine | null>(null);
   const [upgradeChoices, setUpgradeChoices] = useState<PowerUp[]>([]);
 
+  const adStore = useAdStore();
+
   useEffect(() => {
     store.loadPersisted();
+    adStore.initSession();
   }, []);
 
   const getPermanentBonuses = useCallback(() => {
@@ -87,8 +91,10 @@ const Index = () => {
   }, [store]);
 
   const handleRestart = useCallback(() => {
+    adStore.recordDeath();
+    adStore.resetRunAdState();
     startLevel(store.currentLevel);
-  }, [startLevel, store.currentLevel]);
+  }, [startLevel, store.currentLevel, adStore]);
 
   const handleNextLevel = useCallback(() => {
     const nextId = store.currentLevel + 1;
@@ -102,6 +108,20 @@ const Index = () => {
   const handleMenu = useCallback(() => {
     store.setScreen('menu');
     engineRef.current?.stop();
+  }, [store]);
+
+  const handleRevive = useCallback(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    // Revive: push player up, give shield, restart engine
+    engine.player.vy = -JUMP_FORCE;
+    engine.hasShield = true;
+    engine.lavaY = engine.lavaY + 200; // push lava down
+    store.setScreen('playing');
+    engine.running = true;
+    engine.paused = false;
+    engine.lastTime = performance.now();
+    engine.loop(performance.now());
   }, [store]);
 
   const handleEngineReady = useCallback((engine: GameEngine) => {
@@ -125,7 +145,7 @@ const Index = () => {
           onBack={() => store.setScreen('menu')}
         />
       )}
-      {store.screen === 'gameOver' && <GameOverScreen onRestart={handleRestart} onMenu={handleMenu} />}
+      {store.screen === 'gameOver' && <GameOverScreen onRestart={handleRestart} onMenu={handleMenu} onRevive={handleRevive} />}
       {store.screen === 'upgrade' && <UpgradeMenu choices={upgradeChoices} onSelect={handleUpgradeSelect} />}
       {store.screen === 'shop' && <PermanentShop onBack={() => store.setScreen('menu')} />}
       {store.screen === 'levelComplete' && <LevelCompleteScreen onNextLevel={handleNextLevel} onMenu={handleMenu} />}
