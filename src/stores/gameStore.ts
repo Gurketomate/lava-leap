@@ -119,8 +119,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const s = get();
     const newHigh = Math.max(s.highScore, s.score);
     const newTotal = s.totalCoins + s.coins;
-    saveToStorage(newHigh, newTotal, s.upgradeLevels, s.maxUnlockedLevel);
-    set({ screen: 'gameOver', highScore: newHigh, totalCoins: newTotal });
+    const newLevels = { ...s.upgradeLevels };
+    if (newLevels['startShield'] > 0) newLevels['startShield'] = 0;
+    saveToStorage(newHigh, newTotal, newLevels, s.maxUnlockedLevel);
+    set({ screen: 'gameOver', highScore: newHigh, totalCoins: newTotal, upgradeLevels: newLevels });
   },
 
   resetRun: () => set({
