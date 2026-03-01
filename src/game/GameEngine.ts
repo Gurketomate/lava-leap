@@ -80,6 +80,11 @@ export class GameEngine {
   inNoSafeZone = false;
   noSafeZoneDuration = 0;
 
+  // Lava surge
+  lavaSurgeTimer = LAVA_SURGE_INTERVAL;
+  inLavaSurge = false;
+  lavaSurgeDuration = 0;
+
   // Screen shake
   screenShake = 0;
 
