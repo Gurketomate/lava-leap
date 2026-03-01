@@ -7,6 +7,7 @@ import UpgradeMenu from '@/components/game/UpgradeMenu';
 import PermanentShop from '@/components/game/PermanentShop';
 import { useGameStore } from '@/stores/gameStore';
 import { GameEngine } from '@/game/GameEngine';
+import { upgradeChosen } from '@/game/analytics';
 import type { PowerUp } from '@/game/types';
 
 const Index = () => {
@@ -62,6 +63,7 @@ const Index = () => {
     engine.applyPowerUp(powerUp);
     store.addPowerUp(powerUp);
     store.setNextUpgradeAt(engine.nextUpgradeAt);
+    upgradeChosen(powerUp.type);
     setUpgradeChoices([]);
     store.setScreen('playing');
     engine.resume();
