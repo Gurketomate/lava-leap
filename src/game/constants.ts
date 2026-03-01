@@ -12,8 +12,7 @@ export const PLATFORM_GAP_MAX = 120;
 export const PLATFORMS_BUFFER = 800;
 
 export const LAVA_INITIAL_SPEED = 30;
-export const LAVA_ACCELERATION = 0.15;
-export const LAVA_MAX_SPEED = 120;
+export const LAVA_ACCELERATION = 0.15; // legacy, unused by adaptive system
 
 export const COIN_RADIUS = 10;
 export const COIN_SPAWN_CHANCE = 0.35;
@@ -38,10 +37,18 @@ export const DIFFICULTY_BREAKABLE_SCALE = 0.02;
 export const DIFFICULTY_MOVING_SCALE = 0.015;
 export const DIFFICULTY_LAVA_ACCEL_SCALE = 0.02;
 
-// Lava pressure system
-export const LAVA_MAX_CAMERA_DIST = 600; // max px lava can be below camera bottom
-export const LAVA_PRESSURE_ACCEL = 1.5; // extra speed when player is far ahead
+// Adaptive lava system
+export const LAVA_TARGET_DISTANCE_RATIO = 0.30; // 30% of screen height
+export const LAVA_PRESSURE_FACTOR = 2.5; // how aggressively lava chases
+export const LAVA_MIN_SPEED = 20; // minimum lava speed
+export const LAVA_ADAPTIVE_MAX_SPEED = 400; // max adaptive speed
 export const LAVA_MERCY_SLOW = 0.6; // speed multiplier when player is close to death
+export const LAVA_MERCY_THRESHOLD = 0.15; // 15% screen height = critical
+
+// Lava surge
+export const LAVA_SURGE_INTERVAL = 20; // seconds between surges
+export const LAVA_SURGE_DURATION = 2; // seconds
+export const LAVA_SURGE_MULTIPLIER = 1.4; // +40% speed during surge
 
 // Risk/reward
 export const REWARD_PLATFORM_COIN_MULT = 5;
