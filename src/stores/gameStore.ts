@@ -73,6 +73,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setScore: (score) => set({ score }),
   setCoins: (coins) => set({ coins }),
   setLavaProximity: (lavaProximity) => set({ lavaProximity }),
+  setPhase: (phase) => set({ phase }),
+  setScreenShake: (screenShake) => set({ screenShake }),
   addCoin: () => set((s) => ({ coins: s.coins + 1 })),
   addPowerUp: (p) => set((s) => {
     const existing = s.activePowerUps.find((e) => e.type === p.type);
