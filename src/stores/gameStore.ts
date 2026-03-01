@@ -119,6 +119,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setNextUpgradeAt: (nextUpgradeAt) => set({ nextUpgradeAt }),
   setCurrentLevel: (currentLevel) => set({ currentLevel }),
 
+  markUsedAd: () => set({ runUsedAd: true }),
+  markUsedPowerUp: () => set({ runUsedPowerUp: true }),
+  markUsedShield: () => set({ runUsedShield: true }),
+
   completeLevel: () => {
     const s = get();
     const newUnlocked = Math.min(LEVELS.length, Math.max(s.maxUnlockedLevel, s.currentLevel + 1));
@@ -126,13 +130,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const newTotal = s.totalCoins + s.coins;
     const newLevels = { ...s.upgradeLevels };
     if (newLevels['startShield'] > 0) newLevels['startShield'] = 0;
-    saveToStorage(newHigh, newTotal, newLevels, newUnlocked);
+
+    // Calculate stars
+    let stars = 3;
+    if (s.runUsedAd) {
+      stars = 1;
+    } else if (s.runUsedPowerUp || s.runUsedShield) {
+      stars = 2;
+    }
+
+    // Keep best stars
+    const newLevelStars = { ...s.levelStars };
+    const prev = newLevelStars[s.currentLevel] || 0;
+    newLevelStars[s.currentLevel] = Math.max(prev, stars);
+
+    saveToStorage(newHigh, newTotal, newLevels, newUnlocked, newLevelStars);
     set({
       screen: 'levelComplete',
       highScore: newHigh,
       totalCoins: newTotal,
       maxUnlockedLevel: newUnlocked,
       upgradeLevels: newLevels,
+      lastRunStars: stars,
+      levelStars: newLevelStars,
     });
   },
 
@@ -142,7 +162,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const newTotal = s.totalCoins + s.coins;
     const newLevels = { ...s.upgradeLevels };
     if (newLevels['startShield'] > 0) newLevels['startShield'] = 0;
-    saveToStorage(newHigh, newTotal, newLevels, s.maxUnlockedLevel);
+    saveToStorage(newHigh, newTotal, newLevels, s.maxUnlockedLevel, s.levelStars);
     set({ screen: 'gameOver', highScore: newHigh, totalCoins: newTotal, upgradeLevels: newLevels });
   },
 
@@ -156,6 +176,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     phase: 1,
     screenShake: 0,
     upgradeChoices: [],
+    runUsedAd: false,
+    runUsedPowerUp: false,
+    runUsedShield: false,
+    lastRunStars: 0,
   }),
 
   purchasePermanentUpgrade: (id) => {
