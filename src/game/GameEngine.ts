@@ -1,4 +1,4 @@
-import type { Player, Platform, Coin, Particle, PowerUp, DifficultyPhase } from './types';
+import type { Player, Platform, Coin, Particle, PowerUp, LevelDefinition } from './types';
 import {
   GRAVITY, JUMP_FORCE, BOOST_FORCE, MOVE_SPEED,
   PLAYER_WIDTH, PLAYER_HEIGHT,
@@ -8,7 +8,6 @@ import {
   CAMERA_SMOOTH, SCORE_SCALE, UPGRADE_INTERVAL,
   POWER_UP_DEFINITIONS,
   COYOTE_TIME, JUMP_BUFFER_TIME, PLATFORM_HITBOX_PADDING,
-  DIFFICULTY_PHASES,
   LAVA_TARGET_DISTANCE_RATIO, LAVA_PRESSURE_FACTOR,
   LAVA_MIN_SPEED, LAVA_ADAPTIVE_MAX_SPEED, LAVA_MERCY_SLOW, LAVA_MERCY_THRESHOLD,
   LAVA_SURGE_INTERVAL, LAVA_SURGE_DURATION, LAVA_SURGE_MULTIPLIER,
@@ -45,6 +44,11 @@ export class GameEngine {
   animId = 0;
   backgroundLayers: { offset: number; speed: number; shapes: { x: number; y: number; r: number }[] }[] = [];
 
+  // Level system
+  currentLevelDef: LevelDefinition | null = null;
+  levelComplete = false;
+  levelCompleteTimer = 0;
+
   // Power-up state
   hasDoubleJump = false;
   lavaSlowStacks = 0;
@@ -70,9 +74,7 @@ export class GameEngine {
   // Analytics
   runStartTime = 0;
 
-  // Phase-based difficulty
-  currentPhase: DifficultyPhase = DIFFICULTY_PHASES[0];
-  phaseIndex = 0;
+  // Phase tracking (within level)
   elapsedTime = 0;
 
   // No-safe-zone
@@ -99,6 +101,7 @@ export class GameEngine {
   onLavaProximity: Callback = () => {};
   onPhaseChange: Callback = () => {};
   onScreenShake: Callback = () => {};
+  onLevelComplete: Callback = () => {};
 
   nextUpgradeAt = UPGRADE_INTERVAL;
 
@@ -145,25 +148,15 @@ export class GameEngine {
     this.reachability = computeReachability(jumpBonus);
   }
 
-  /** Get current difficulty phase based on elapsed time */
-  updatePhase() {
-    let newIndex = 0;
-    for (let i = DIFFICULTY_PHASES.length - 1; i >= 0; i--) {
-      if (this.elapsedTime >= DIFFICULTY_PHASES[i].minTime) {
-        newIndex = i;
-        break;
-      }
-    }
-    if (newIndex !== this.phaseIndex) {
-      this.phaseIndex = newIndex;
-      this.currentPhase = DIFFICULTY_PHASES[newIndex];
-      this.onPhaseChange(newIndex + 1);
-    }
+  setLevel(levelDef: LevelDefinition) {
+    this.currentLevelDef = levelDef;
   }
 
-  /** Pick platform type based on current phase probabilities */
+  /** Pick platform type based on current level definition */
   pickPlatformType(): Platform['type'] {
-    const phase = this.currentPhase;
+    const level = this.currentLevelDef;
+    if (!level) return 'normal';
+
     const stabilizerReduction = this.platformStabilizerStacks * 0.05;
 
     // In no-safe-zone, only hard platforms
@@ -175,17 +168,17 @@ export class GameEngine {
       return 'boost';
     }
 
-    const breakable = Math.max(0, phase.breakableChance - stabilizerReduction);
+    const breakable = Math.max(0, level.breakableChance - stabilizerReduction);
     const r = Math.random();
     let cumulative = 0;
 
-    cumulative += phase.boostChance;
+    cumulative += level.boostChance;
     if (r < cumulative) return 'boost';
 
-    cumulative += phase.rewardChance;
+    cumulative += level.rewardChance;
     if (r < cumulative) return 'reward';
 
-    cumulative += phase.movingChance;
+    cumulative += level.movingChance;
     if (r < cumulative) return 'moving';
 
     cumulative += breakable;
@@ -221,8 +214,6 @@ export class GameEngine {
     this.jumpRequested = false;
     this.reachability = computeReachability(this.jumpBonus);
     this.elapsedTime = 0;
-    this.phaseIndex = 0;
-    this.currentPhase = DIFFICULTY_PHASES[0];
     this.noSafeZoneTimer = NO_SAFE_ZONE_INTERVAL;
     this.inNoSafeZone = false;
     this.noSafeZoneDuration = 0;
@@ -231,6 +222,8 @@ export class GameEngine {
     this.lavaSurgeDuration = 0;
     this.screenShake = 0;
     this.doubleJumpFlashTimer = 0;
+    this.levelComplete = false;
+    this.levelCompleteTimer = 0;
 
     const startPlatform: Platform = {
       x: this.width / 2 - PLATFORM_WIDTH / 2,
@@ -288,6 +281,7 @@ export class GameEngine {
 
   generatePlatformsUpTo(targetY: number) {
     const lastPlatform = this.platforms.length > 0 ? this.platforms[this.platforms.length - 1] : null;
+    const widthMod = this.currentLevelDef?.platformWidthMod ?? 1;
 
     while (this.highestPlatformY > targetY) {
       const gap = PLATFORM_GAP_MIN + Math.random() * (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN);
@@ -296,9 +290,8 @@ export class GameEngine {
 
       const type = this.pickPlatformType();
 
-      // Phase-based width scaling
       const baseWidth = PLATFORM_WIDTH + (type === 'normal' ? Math.random() * 20 : 0);
-      const platWidth = baseWidth * this.currentPhase.platformWidthMod;
+      const platWidth = baseWidth * widthMod;
 
       // Reachability validation
       const sourcePlat = lastPlatform || this.platforms[this.platforms.length - 1];
@@ -316,12 +309,6 @@ export class GameEngine {
             this.width - platWidth,
             sourcePlat.x + sourcePlat.width / 2 - platWidth / 2 + (Math.random() - 0.5) * 60
           ));
-        }
-
-        // No moving platform after large gap
-        const vertDist = sourcePlat.y - newY;
-        if (type === 'moving' && vertDist > this.reachability.safeVerticalDist * 0.6) {
-          // downgrade to normal — already assigned, just override
         }
       }
 
@@ -341,7 +328,7 @@ export class GameEngine {
 
       this.platforms.push(platform);
 
-      // Coin spawning — reward platforms always have coins, otherwise chance-based
+      // Coin spawning
       const coinChance = type === 'reward'
         ? 1.0
         : COIN_SPAWN_CHANCE + this.coinSpawnBonus;
@@ -365,8 +352,20 @@ export class GameEngine {
   update(dt: number) {
     if (dt > 0.05) dt = 0.05;
 
+    // Level complete animation
+    if (this.levelComplete) {
+      this.levelCompleteTimer += dt;
+      // Slowly pan camera up for 1.5s, then trigger callback
+      const targetCameraY = this.player.y - this.height * 0.4;
+      this.cameraY += (targetCameraY - this.cameraY) * 0.03;
+      if (this.levelCompleteTimer > 1.5) {
+        this.running = false;
+        this.onLevelComplete({ score: this.score, coins: this.coinCount });
+      }
+      return;
+    }
+
     this.elapsedTime += dt;
-    this.updatePhase();
 
     // No-safe-zone timer
     if (!this.inNoSafeZone) {
@@ -413,7 +412,6 @@ export class GameEngine {
     }
 
     // Platform collision (only falling)
-    let landedThisFrame = false;
     if (p.vy > 0) {
       for (const plat of this.platforms) {
         if (plat.broken) continue;
@@ -441,7 +439,6 @@ export class GameEngine {
 
           p.y = plat.y - p.height;
           p.doubleJumpUsed = false;
-          landedThisFrame = true;
           this.wasOnGround = true;
           this.coyoteTimer = 0;
 
@@ -469,9 +466,17 @@ export class GameEngine {
 
     // === ADAPTIVE LAVA SYSTEM ===
     const lavaSlowMult = Math.pow(0.7, this.lavaSlowStacks);
-    const phaseSpeedMod = this.currentPhase.lavaSpeedMod;
-    // Phase 5: exponential acceleration
-    const expoAccel = this.phaseIndex >= 4 ? 1 + (this.elapsedTime - 120) * 0.005 : 1;
+    const levelSpeedMod = this.currentLevelDef?.lavaSpeedMod ?? 1;
+
+    // End-of-level lava acceleration (last 20% of target height)
+    let endAccel = 1;
+    if (this.currentLevelDef) {
+      const progress = this.score / this.currentLevelDef.targetHeight;
+      if (progress > 0.8) {
+        const endProgress = (progress - 0.8) / 0.2; // 0-1
+        endAccel = 1 + (this.currentLevelDef.lavaEndAccel - 1) * endProgress;
+      }
+    }
 
     // Lava surge timer
     if (!this.inLavaSurge) {
@@ -490,13 +495,11 @@ export class GameEngine {
 
     // Target distance = 30% of screen height
     const targetDistance = this.height * LAVA_TARGET_DISTANCE_RATIO;
-    // Current distance (positive = player is above lava)
     const currentDistance = this.lavaY - (p.y + p.height);
-    // Mercy threshold in px
     const mercyDist = this.height * LAVA_MERCY_THRESHOLD;
 
-    // Base speed grows with phase
-    const baseSpeed = LAVA_INITIAL_SPEED * phaseSpeedMod * expoAccel * (1 - this.lavaResistBonus);
+    // Base speed uses level speed mod + end accel
+    const baseSpeed = LAVA_INITIAL_SPEED * levelSpeedMod * endAccel * (1 - this.lavaResistBonus);
 
     // Adaptive: accelerate/decelerate based on distance vs target
     let adaptiveSpeed = baseSpeed + (currentDistance - targetDistance) * LAVA_PRESSURE_FACTOR;
@@ -532,6 +535,15 @@ export class GameEngine {
     const heightReached = Math.max(0, this.startY - p.y);
     this.score = Math.floor(heightReached / SCORE_SCALE);
     this.onScoreUpdate(this.score);
+
+    // Level complete check
+    if (this.currentLevelDef && this.score >= this.currentLevelDef.targetHeight && !this.levelComplete) {
+      this.levelComplete = true;
+      this.levelCompleteTimer = 0;
+      // Stop lava
+      this.lavaY = this.lavaY + 200; // push lava down for safety
+      return;
+    }
 
     // Upgrade check
     if (this.score >= this.nextUpgradeAt) {
@@ -681,19 +693,17 @@ export class GameEngine {
       ctx.stroke();
     }
 
-    // Lava edge glow overlay (rendered in screen space)
+    // Lava edge glow overlay
     const distToLava = this.lavaY - (this.player.y + this.player.height);
     const prox = 1 - Math.min(1, Math.max(0, distToLava / 400));
     if (prox > 0.2) {
       const intensity = (prox - 0.2) * 1.25;
-      // Bottom glow
       const grad = ctx.createLinearGradient(0, h, 0, h - h * intensity * 0.5);
       grad.addColorStop(0, `rgba(255, 40, 0, ${intensity * 0.35})`);
       grad.addColorStop(1, 'rgba(255, 40, 0, 0)');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
 
-      // Side vignette
       const sideGrad = ctx.createLinearGradient(0, 0, w * 0.15, 0);
       sideGrad.addColorStop(0, `rgba(255, 30, 0, ${intensity * 0.2})`);
       sideGrad.addColorStop(1, 'rgba(255, 30, 0, 0)');
@@ -706,7 +716,6 @@ export class GameEngine {
       ctx.fillStyle = sideGrad2;
       ctx.fillRect(w * 0.85, 0, w * 0.15, h);
 
-      // Heat distortion lines
       if (intensity > 0.4) {
         ctx.globalAlpha = (intensity - 0.4) * 0.3;
         const time = performance.now() / 1000;
@@ -732,12 +741,34 @@ export class GameEngine {
       ctx.fillRect(0, 0, w, h);
     }
 
-    // Phase indicator
-    if (this.phaseIndex > 0) {
-      ctx.fillStyle = 'rgba(255,255,255,0.3)';
-      ctx.font = '10px sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText(`Phase ${this.phaseIndex + 1}`, w - 10, h - 20);
+    // Level progress indicator
+    if (this.currentLevelDef) {
+      const progress = Math.min(1, this.score / this.currentLevelDef.targetHeight);
+      const barW = 4;
+      const barH = h * 0.6;
+      const barX = w - 14;
+      const barY = (h - barH) / 2;
+
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.fillRect(barX, barY, barW, barH);
+
+      const fillH = barH * progress;
+      const barGrad = ctx.createLinearGradient(barX, barY + barH - fillH, barX, barY + barH);
+      barGrad.addColorStop(0, 'rgba(255, 200, 0, 0.8)');
+      barGrad.addColorStop(1, 'rgba(255, 80, 0, 0.8)');
+      ctx.fillStyle = barGrad;
+      ctx.fillRect(barX, barY + barH - fillH, barW, fillH);
+
+      // Goal marker
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillRect(barX - 2, barY - 2, barW + 4, 2);
+    }
+
+    // Level complete flash
+    if (this.levelComplete) {
+      const alpha = Math.min(1, this.levelCompleteTimer * 0.8);
+      ctx.fillStyle = `rgba(255, 215, 0, ${alpha * 0.15})`;
+      ctx.fillRect(0, 0, w, h);
     }
 
     ctx.restore(); // screen shake restore
@@ -808,7 +839,6 @@ export class GameEngine {
     }
 
     if (plat.type === 'reward') {
-      // Pulsing glow for reward platforms
       const pulse = Math.sin(performance.now() / 200) * 0.3 + 0.7;
       ctx.fillStyle = `rgba(255, 215, 0, ${pulse * 0.4})`;
       ctx.fillText('💰', plat.x + plat.width / 2, plat.y + 11);
@@ -841,7 +871,6 @@ export class GameEngine {
     ctx.save();
     ctx.translate(p.x + p.width / 2, p.y + p.height / 2);
 
-    // Double jump flash: color shift
     if (this.doubleJumpFlashTimer > 0) {
       const flashIntensity = this.doubleJumpFlashTimer / 0.3;
       const r = Math.round(231 + (0 - 231) * flashIntensity);
@@ -932,7 +961,6 @@ export class GameEngine {
       this.player.vy = -JUMP_FORCE * 0.8 * (1 + this.jumpBonus);
       this.player.doubleJumpUsed = true;
       this.doubleJumpFlashTimer = 0.3;
-      // Explosion particles
       this.spawnParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height, '#00ccff', 12);
       this.spawnParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height, '#ffffff', 6);
     }
