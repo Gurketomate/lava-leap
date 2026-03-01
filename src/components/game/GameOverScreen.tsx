@@ -16,7 +16,7 @@ const GameOverScreen = ({ onRestart, onMenu }: GameOverScreenProps) => {
       <div className="flex flex-col items-center gap-6 animate-fade-in">
         <div className="text-center">
           <h2 className="text-4xl md:text-5xl font-display font-black text-destructive">
-            GAME OVER
+            LEVEL {currentLevel} — GAME OVER
           </h2>
           {isNewHigh && (
             <p className="text-accent font-display font-bold text-lg mt-1 animate-float text-glow-accent">
