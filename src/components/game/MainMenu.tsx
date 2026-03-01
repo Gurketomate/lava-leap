@@ -1,18 +1,30 @@
 import { useGameStore } from '@/stores/gameStore';
 import { useSoundClick } from '@/hooks/useSoundClick';
+import { Settings } from 'lucide-react';
 
 interface MainMenuProps {
   onStart: () => void;
   onShop: () => void;
+  onSettings: () => void;
 }
 
-const MainMenu = ({ onStart, onShop }: MainMenuProps) => {
+const MainMenu = ({ onStart, onShop, onSettings }: MainMenuProps) => {
   const { highScore, totalCoins } = useGameStore();
   const handleStart = useSoundClick(onStart);
   const handleShop = useSoundClick(onShop);
+  const handleSettings = useSoundClick(onSettings);
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm">
+      {/* Settings button */}
+      <button
+        onClick={handleSettings}
+        className="absolute top-4 right-4 p-3 rounded-xl glass-panel text-muted-foreground
+          hover:text-foreground hover:scale-110 active:scale-95 transition-all duration-150"
+      >
+        <Settings size={22} />
+      </button>
+
       {/* Lava glow at bottom */}
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-lava/20 to-transparent" />
 

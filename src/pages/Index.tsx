@@ -7,8 +7,10 @@ import UpgradeMenu from '@/components/game/UpgradeMenu';
 import PermanentShop from '@/components/game/PermanentShop';
 import LevelCompleteScreen from '@/components/game/LevelCompleteScreen';
 import LevelSelectScreen from '@/components/game/LevelSelectScreen';
+import SettingsMenu from '@/components/game/SettingsMenu';
 import { useGameStore } from '@/stores/gameStore';
 import { useAdStore } from '@/stores/adStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { GameEngine } from '@/game/GameEngine';
 import { LEVELS, JUMP_FORCE } from '@/game/constants';
 import { upgradeChosen } from '@/game/analytics';
@@ -19,12 +21,14 @@ const Index = () => {
   const store = useGameStore();
   const engineRef = useRef<GameEngine | null>(null);
   const [upgradeChoices, setUpgradeChoices] = useState<PowerUp[]>([]);
+  const [showSettings, setShowSettings] = useState(false);
 
   const adStore = useAdStore();
 
   useEffect(() => {
     store.loadPersisted();
     adStore.initSession();
+    useSettingsStore.getState().loadSettings();
   }, []);
 
   const getPermanentBonuses = useCallback(() => {
@@ -139,6 +143,7 @@ const Index = () => {
         <MainMenu
           onStart={() => store.setScreen('levelSelect')}
           onShop={() => store.setScreen('shop')}
+          onSettings={() => setShowSettings(true)}
         />
       )}
       {store.screen === 'levelSelect' && (
@@ -151,6 +156,7 @@ const Index = () => {
       {store.screen === 'upgrade' && <UpgradeMenu choices={upgradeChoices} onSelect={handleUpgradeSelect} />}
       {store.screen === 'shop' && <PermanentShop onBack={() => store.setScreen('menu')} />}
       {store.screen === 'levelComplete' && <LevelCompleteScreen onNextLevel={handleNextLevel} onMenu={handleMenu} />}
+      {showSettings && <SettingsMenu onClose={() => setShowSettings(false)} />}
     </div>
   );
 };
