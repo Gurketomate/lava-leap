@@ -483,14 +483,16 @@ export class GameEngine {
           if (plat.type === 'boost') {
             p.vy = -BOOST_FORCE * (1 + this.jumpBonus);
             this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ff6600', 8);
+            playJump(1.0); // max pitch for boost
           } else if (plat.type === 'breakable' || plat.type === 'reward') {
             p.vy = -jumpForce;
             plat.broken = true;
             this.spawnParticles(plat.x + plat.width / 2, plat.y, plat.type === 'reward' ? '#ffd700' : '#888888', 8);
+            playJump(0.5);
           } else {
             p.vy = -jumpForce;
+            playJump(0.4);
           }
-          playJump();
 
           p.y = plat.y - p.height;
           p.doubleJumpUsed = false;
