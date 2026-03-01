@@ -119,10 +119,9 @@ const Index = () => {
   const handleRevive = useCallback(() => {
     const engine = engineRef.current;
     if (!engine) return;
-    // Revive: push player up, give shield, restart engine
-    // Revive: extra life only — no shield, no power-ups
+    store.markUsedAd(); // Track for star rating
     engine.player.vy = -JUMP_FORCE;
-    engine.lavaY = engine.lavaY + 200; // push lava down
+    engine.lavaY = engine.lavaY + 200;
     store.setScreen('playing');
     engine.running = true;
     engine.paused = false;
