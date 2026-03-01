@@ -581,6 +581,7 @@ export class GameEngine {
     // Lava proximity (0 = far, 1 = touching)
     const proximity = 1 - Math.min(1, Math.max(0, currentDistance / (this.height * 0.5)));
     this.onLavaProximity(proximity);
+    updateLavaProximity(proximity);
 
     // Screen shake based on proximity
     this.screenShake = proximity > 0.6 ? (proximity - 0.6) * 2.5 : 0;
