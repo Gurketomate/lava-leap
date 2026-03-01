@@ -110,6 +110,20 @@ const Index = () => {
     engineRef.current?.stop();
   }, [store]);
 
+  const handleRevive = useCallback(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    // Revive: push player up, give shield, restart engine
+    engine.player.vy = -JUMP_FORCE;
+    engine.hasShield = true;
+    engine.lavaY = engine.lavaY + 200; // push lava down
+    store.setScreen('playing');
+    engine.running = true;
+    engine.paused = false;
+    engine.lastTime = performance.now();
+    engine.loop(performance.now());
+  }, [store]);
+
   const handleEngineReady = useCallback((engine: GameEngine) => {
     engineRef.current = engine;
   }, []);
