@@ -8,7 +8,11 @@ import {
   CAMERA_SMOOTH, SCORE_SCALE, UPGRADE_INTERVAL,
   BREAKABLE_CHANCE_BASE, MOVING_CHANCE_BASE, BOOST_CHANCE_BASE,
   POWER_UP_DEFINITIONS,
+  COYOTE_TIME, JUMP_BUFFER_TIME, PLATFORM_HITBOX_PADDING,
+  DIFFICULTY_BREAKABLE_SCALE, DIFFICULTY_MOVING_SCALE, DIFFICULTY_LAVA_ACCEL_SCALE,
 } from './constants';
+import { computeReachability, isPlatformReachable, type ReachabilityLimits } from './reachability';
+import { runStart, runEnd, deathCause } from './analytics';
 
 type Callback = (data: any) => void;
 
@@ -49,6 +53,18 @@ export class GameEngine {
   coinSpawnBonus = 0;
   lavaResistBonus = 0;
   startWithShield = false;
+
+  // Fairness assists (hidden)
+  coyoteTimer = 0;
+  jumpBufferTimer = 0;
+  wasOnGround = false;
+  jumpRequested = false;
+
+  // Reachability
+  reachability: ReachabilityLimits = computeReachability(0);
+
+  // Analytics
+  runStartTime = 0;
 
   // Callbacks
   onScoreUpdate: Callback = () => {};
@@ -99,6 +115,12 @@ export class GameEngine {
     this.coinSpawnBonus = coinSpawnBonus;
     this.lavaResistBonus = lavaResistBonus;
     this.startWithShield = startWithShield;
+    this.reachability = computeReachability(jumpBonus);
+  }
+
+  /** Get difficulty multiplier based on current score (scales per 1000 pts) */
+  getDifficultyFactor(): number {
+    return this.score / 1000;
   }
 
   init() {
@@ -122,6 +144,11 @@ export class GameEngine {
     this.hasShield = this.startWithShield;
     this.platformStabilizerStacks = 0;
     this.inputDir = 0;
+    this.coyoteTimer = 0;
+    this.jumpBufferTimer = 0;
+    this.wasOnGround = false;
+    this.jumpRequested = false;
+    this.reachability = computeReachability(this.jumpBonus);
 
     // Generate initial platforms
     const startPlatform: Platform = {
@@ -143,6 +170,8 @@ export class GameEngine {
     this.running = true;
     this.paused = false;
     this.lastTime = performance.now();
+    this.runStartTime = performance.now();
+    runStart();
     this.loop(this.lastTime);
   }
 
@@ -181,21 +210,63 @@ export class GameEngine {
   }
 
   generatePlatformsUpTo(targetY: number) {
+    const difficulty = this.getDifficultyFactor();
+    const lastPlatform = this.platforms.length > 0
+      ? this.platforms[this.platforms.length - 1]
+      : null;
+
     while (this.highestPlatformY > targetY) {
       const gap = PLATFORM_GAP_MIN + Math.random() * (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN);
       const newY = this.highestPlatformY - gap;
-      const newX = Math.random() * (this.width - PLATFORM_WIDTH);
+      let newX = Math.random() * (this.width - PLATFORM_WIDTH);
 
+      // Determine type with difficulty scaling
       let type: Platform['type'] = 'normal';
-      const breakChance = Math.max(0, BREAKABLE_CHANCE_BASE - this.platformStabilizerStacks * 0.05);
+      const breakChance = Math.max(0,
+        BREAKABLE_CHANCE_BASE + difficulty * DIFFICULTY_BREAKABLE_SCALE - this.platformStabilizerStacks * 0.05
+      );
+      const moveChance = MOVING_CHANCE_BASE + difficulty * DIFFICULTY_MOVING_SCALE;
       const r = Math.random();
       if (r < BOOST_CHANCE_BASE) type = 'boost';
-      else if (r < BOOST_CHANCE_BASE + MOVING_CHANCE_BASE) type = 'moving';
-      else if (r < BOOST_CHANCE_BASE + MOVING_CHANCE_BASE + breakChance) type = 'breakable';
+      else if (r < BOOST_CHANCE_BASE + moveChance) type = 'moving';
+      else if (r < BOOST_CHANCE_BASE + moveChance + breakChance) type = 'breakable';
+
+      const platWidth = PLATFORM_WIDTH + (type === 'normal' ? Math.random() * 20 : 0);
+
+      // Reachability validation: ensure platform is reachable from previous
+      const sourcePlat = lastPlatform || this.platforms[this.platforms.length - 1];
+      if (sourcePlat) {
+        let attempts = 0;
+        while (
+          attempts < 20 &&
+          !isPlatformReachable(
+            sourcePlat.x, sourcePlat.width, sourcePlat.y,
+            newX, platWidth, newY,
+            this.reachability,
+          )
+        ) {
+          newX = Math.random() * (this.width - platWidth);
+          attempts++;
+        }
+
+        // If still unreachable after retries, place directly above source
+        if (attempts >= 20) {
+          newX = Math.max(0, Math.min(
+            this.width - platWidth,
+            sourcePlat.x + sourcePlat.width / 2 - platWidth / 2 + (Math.random() - 0.5) * 60
+          ));
+        }
+
+        // Rule: no moving platform directly after a large gap
+        const vertDist = sourcePlat.y - newY;
+        if (type === 'moving' && vertDist > this.reachability.safeVerticalDist * 0.6) {
+          type = 'normal';
+        }
+      }
 
       const platform: Platform = {
         x: newX, y: newY,
-        width: PLATFORM_WIDTH + (type === 'normal' ? Math.random() * 20 : 0),
+        width: platWidth,
         height: PLATFORM_HEIGHT,
         type, broken: false,
       };
@@ -213,7 +284,7 @@ export class GameEngine {
       const coinChance = COIN_SPAWN_CHANCE + this.coinSpawnBonus;
       if (Math.random() < coinChance) {
         this.coins.push({
-          x: newX + PLATFORM_WIDTH / 2,
+          x: newX + platWidth / 2,
           y: newY - 25,
           radius: COIN_RADIUS,
           collected: false,
@@ -244,18 +315,37 @@ export class GameEngine {
     if (p.x + p.width < 0) p.x = this.width;
     if (p.x > this.width) p.x = -p.width;
 
-    // Double jump (tap while in air)
-    if (this.hasDoubleJump && p.vy > 0 && !p.doubleJumpUsed && this.inputDir !== 0) {
-      // Double jump is triggered by special tap - handled externally
+    // Fairness: update coyote timer
+    if (this.wasOnGround && p.vy > 0) {
+      this.coyoteTimer += dt;
+    }
+    if (this.coyoteTimer > COYOTE_TIME) {
+      this.wasOnGround = false;
+      this.coyoteTimer = 0;
+    }
+
+    // Fairness: jump buffer timer
+    if (this.jumpRequested) {
+      this.jumpBufferTimer += dt;
+      if (this.jumpBufferTimer > JUMP_BUFFER_TIME) {
+        this.jumpRequested = false;
+        this.jumpBufferTimer = 0;
+      }
     }
 
     // Platform collision (only when falling)
+    let landedThisFrame = false;
     if (p.vy > 0) {
       for (const plat of this.platforms) {
         if (plat.broken) continue;
+
+        // Enlarged hitbox for fairness
+        const platLeft = plat.x - PLATFORM_HITBOX_PADDING;
+        const platRight = plat.x + plat.width + PLATFORM_HITBOX_PADDING;
+
         if (
-          p.x + p.width > plat.x &&
-          p.x < plat.x + plat.width &&
+          p.x + p.width > platLeft &&
+          p.x < platRight &&
           p.y + p.height >= plat.y &&
           p.y + p.height <= plat.y + plat.height + p.vy * dt + 5
         ) {
@@ -274,9 +364,22 @@ export class GameEngine {
 
           p.y = plat.y - p.height;
           p.doubleJumpUsed = false;
+          landedThisFrame = true;
+          this.wasOnGround = true;
+          this.coyoteTimer = 0;
+
+          // Consume jump buffer
+          if (this.jumpRequested) {
+            this.jumpRequested = false;
+            this.jumpBufferTimer = 0;
+          }
           break;
         }
       }
+    }
+
+    if (!landedThisFrame && p.vy <= 0) {
+      // Player is ascending, not on ground
     }
 
     // Moving platforms
@@ -295,9 +398,11 @@ export class GameEngine {
       this.cameraY += (targetCameraY - this.cameraY) * CAMERA_SMOOTH * 60 * dt;
     }
 
-    // Lava
+    // Lava (with difficulty-scaled acceleration)
+    const difficulty = this.getDifficultyFactor();
     const lavaMultiplier = Math.pow(0.7, this.lavaSlowStacks);
-    this.lavaSpeed = Math.min(LAVA_MAX_SPEED, this.lavaSpeed + LAVA_ACCELERATION * dt) * lavaMultiplier;
+    const scaledAccel = LAVA_ACCELERATION * (1 + difficulty * DIFFICULTY_LAVA_ACCEL_SCALE);
+    this.lavaSpeed = Math.min(LAVA_MAX_SPEED, this.lavaSpeed + scaledAccel * dt) * lavaMultiplier;
     this.lavaY -= this.lavaSpeed * dt;
     if (this.lavaY > this.cameraY + this.height + 200) {
       this.lavaY = this.cameraY + this.height + 200;
@@ -368,6 +473,8 @@ export class GameEngine {
         this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00aaff', 12);
       } else {
         this.running = false;
+        deathCause('lava');
+        runEnd(this.score, (performance.now() - this.runStartTime) / 1000);
         this.onGameOver({ score: this.score, coins: this.coinCount });
         return;
       }
@@ -378,6 +485,8 @@ export class GameEngine {
         p.vy = -JUMP_FORCE;
       } else {
         this.running = false;
+        deathCause('fall');
+        runEnd(this.score, (performance.now() - this.runStartTime) / 1000);
         this.onGameOver({ score: this.score, coins: this.coinCount });
         return;
       }
@@ -403,35 +512,28 @@ export class GameEngine {
     const w = this.width;
     const h = this.height;
 
-    // Clear
     ctx.fillStyle = '#08080f';
     ctx.fillRect(0, 0, w, h);
 
     ctx.save();
     ctx.translate(0, -this.cameraY);
 
-    // Background parallax
     this.renderBackground(ctx);
 
-    // Platforms
     for (const plat of this.platforms) {
       if (plat.broken) continue;
       if (plat.y < this.cameraY - 50 || plat.y > this.cameraY + h + 50) continue;
-
       this.renderPlatform(ctx, plat);
     }
 
-    // Coins
     for (const coin of this.coins) {
       if (coin.collected) continue;
       if (coin.y < this.cameraY - 50 || coin.y > this.cameraY + h + 50) continue;
       this.renderCoin(ctx, coin);
     }
 
-    // Player
     this.renderPlayer(ctx);
 
-    // Particles
     for (const part of this.particles) {
       const alpha = part.life / part.maxLife;
       ctx.globalAlpha = alpha;
@@ -442,7 +544,6 @@ export class GameEngine {
     }
     ctx.globalAlpha = 1;
 
-    // Lava
     this.renderLava(ctx);
 
     ctx.restore();
@@ -506,7 +607,6 @@ export class GameEngine {
 
     ctx.shadowBlur = 0;
 
-    // Breakable cracks
     if (plat.type === 'breakable') {
       ctx.strokeStyle = 'rgba(0,0,0,0.4)';
       ctx.lineWidth = 1;
@@ -518,7 +618,6 @@ export class GameEngine {
       ctx.stroke();
     }
 
-    // Boost arrows
     if (plat.type === 'boost') {
       ctx.fillStyle = '#fff';
       ctx.font = '10px sans-serif';
@@ -553,26 +652,22 @@ export class GameEngine {
     ctx.save();
     ctx.translate(p.x + p.width / 2, p.y + p.height / 2);
 
-    // Body
     ctx.fillStyle = '#e74c3c';
     ctx.beginPath();
     ctx.roundRect(-p.width / 2, -p.height / 2, p.width, p.height, 6);
     ctx.fill();
 
-    // Visor
     ctx.fillStyle = '#3498db';
     ctx.beginPath();
     ctx.roundRect(-10, -p.height / 2 + 4, 20, 12, 4);
     ctx.fill();
 
-    // Eyes
     ctx.fillStyle = '#fff';
     ctx.beginPath();
     ctx.arc(-4, -p.height / 2 + 10, 3, 0, Math.PI * 2);
     ctx.arc(4, -p.height / 2 + 10, 3, 0, Math.PI * 2);
     ctx.fill();
 
-    // Jet flame when jumping up
     if (p.vy < -100) {
       const flameH = Math.min(20, Math.abs(p.vy) / 40);
       const grad = ctx.createLinearGradient(0, p.height / 2, 0, p.height / 2 + flameH);
@@ -597,21 +692,18 @@ export class GameEngine {
 
     if (lavaTop > this.cameraY + this.height + 50) return;
 
-    // Lava glow
     const glowGrad = ctx.createLinearGradient(0, lavaTop - 80, 0, lavaTop);
     glowGrad.addColorStop(0, 'rgba(255, 60, 0, 0)');
     glowGrad.addColorStop(1, 'rgba(255, 60, 0, 0.3)');
     ctx.fillStyle = glowGrad;
     ctx.fillRect(0, lavaTop - 80, this.width, 80);
 
-    // Lava body
     const lavaGrad = ctx.createLinearGradient(0, lavaTop, 0, lavaBottom);
     lavaGrad.addColorStop(0, '#ff4500');
     lavaGrad.addColorStop(0.3, '#ff2200');
     lavaGrad.addColorStop(1, '#8b0000');
     ctx.fillStyle = lavaGrad;
 
-    // Wavy surface
     ctx.beginPath();
     ctx.moveTo(0, lavaBottom);
     const time = performance.now() / 1000;
@@ -623,7 +715,6 @@ export class GameEngine {
     ctx.closePath();
     ctx.fill();
 
-    // Surface bright line
     ctx.strokeStyle = '#ffaa00';
     ctx.lineWidth = 2;
     ctx.shadowColor = '#ff6600';
