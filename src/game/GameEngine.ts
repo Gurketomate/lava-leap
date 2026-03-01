@@ -591,8 +591,9 @@ export class GameEngine {
     if (this.currentLevelDef && this.score >= this.currentLevelDef.targetHeight && !this.levelComplete) {
       this.levelComplete = true;
       this.levelCompleteTimer = 0;
-      // Stop lava
-      this.lavaY = this.lavaY + 200; // push lava down for safety
+      this.lavaY = this.lavaY + 200;
+      stopMusic();
+      playLevelComplete();
       return;
     }
 
