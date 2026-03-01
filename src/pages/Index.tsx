@@ -21,6 +21,7 @@ const Index = () => {
   const store = useGameStore();
   const engineRef = useRef<GameEngine | null>(null);
   const [upgradeChoices, setUpgradeChoices] = useState<PowerUp[]>([]);
+  const [showSettings, setShowSettings] = useState(false);
 
   const adStore = useAdStore();
 
