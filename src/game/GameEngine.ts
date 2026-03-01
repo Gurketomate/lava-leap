@@ -16,6 +16,7 @@ import {
 } from './constants';
 import { computeReachability, isPlatformReachable, type ReachabilityLimits } from './reachability';
 import { runStart, runEnd, deathCause } from './analytics';
+import { playJump, playCoin, playDeath, playPowerUp, playLevelComplete, startMusic, stopMusic } from './SoundManager';
 
 type Callback = (data: any) => void;
 
@@ -246,12 +247,14 @@ export class GameEngine {
     this.lastTime = performance.now();
     this.runStartTime = performance.now();
     runStart();
+    startMusic();
     this.loop(this.lastTime);
   }
 
   stop() {
     this.running = false;
     cancelAnimationFrame(this.animId);
+    stopMusic();
   }
 
   pause() { this.paused = true; }
@@ -265,6 +268,7 @@ export class GameEngine {
   setInput(dir: number) { this.inputDir = dir; }
 
   applyPowerUp(powerUp: PowerUp) {
+    playPowerUp();
     switch (powerUp.type) {
       case 'doubleJump': this.hasDoubleJump = true; break;
       case 'lavaSlow': this.lavaSlowStacks++; break;
@@ -484,6 +488,7 @@ export class GameEngine {
           } else {
             p.vy = -jumpForce;
           }
+          playJump();
 
           p.y = plat.y - p.height;
           p.doubleJumpUsed = false;
@@ -588,8 +593,9 @@ export class GameEngine {
     if (this.currentLevelDef && this.score >= this.currentLevelDef.targetHeight && !this.levelComplete) {
       this.levelComplete = true;
       this.levelCompleteTimer = 0;
-      // Stop lava
-      this.lavaY = this.lavaY + 200; // push lava down for safety
+      this.lavaY = this.lavaY + 200;
+      stopMusic();
+      playLevelComplete();
       return;
     }
 
@@ -619,6 +625,7 @@ export class GameEngine {
         this.coinCount++;
         this.onCoinCollect(this.coinCount);
         this.spawnParticles(coin.x, coin.y, '#ffd700', 5);
+        playCoin();
       }
       coin.angle += dt * 3;
     }
@@ -649,6 +656,8 @@ export class GameEngine {
         this.running = false;
         deathCause('lava');
         runEnd(this.score, (performance.now() - this.runStartTime) / 1000);
+        stopMusic();
+        playDeath();
         this.onGameOver({ score: this.score, coins: this.coinCount });
         return;
       }
@@ -661,6 +670,8 @@ export class GameEngine {
         this.running = false;
         deathCause('fall');
         runEnd(this.score, (performance.now() - this.runStartTime) / 1000);
+        stopMusic();
+        playDeath();
         this.onGameOver({ score: this.score, coins: this.coinCount });
         return;
       }

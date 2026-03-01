@@ -12,6 +12,7 @@ import { useAdStore } from '@/stores/adStore';
 import { GameEngine } from '@/game/GameEngine';
 import { LEVELS, JUMP_FORCE } from '@/game/constants';
 import { upgradeChosen } from '@/game/analytics';
+import { startMusic } from '@/game/SoundManager';
 import type { PowerUp } from '@/game/types';
 
 const Index = () => {
@@ -121,6 +122,7 @@ const Index = () => {
     engine.running = true;
     engine.paused = false;
     engine.lastTime = performance.now();
+    startMusic();
     engine.loop(performance.now());
   }, [store]);
 

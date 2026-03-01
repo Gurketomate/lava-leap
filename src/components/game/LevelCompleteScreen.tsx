@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { useAdStore } from '@/stores/adStore';
+import { useSoundClick } from '@/hooks/useSoundClick';
 
 interface LevelCompleteScreenProps {
   onNextLevel: () => void;
@@ -12,7 +13,9 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
   const { canShowMilestoneInterstitial, showInterstitial } = useAdStore();
   const [adShown, setAdShown] = useState(false);
 
-  // Show milestone interstitial (every 5th level, with session/cooldown checks)
+  const handleNextLevel = useSoundClick(onNextLevel);
+  const handleMenu = useSoundClick(onMenu);
+
   useEffect(() => {
     if (!adShown && canShowMilestoneInterstitial(currentLevel)) {
       setAdShown(true);
@@ -52,7 +55,7 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
 
         <div className="flex gap-3">
           <button
-            onClick={onNextLevel}
+            onClick={handleNextLevel}
             className="px-8 py-3 rounded-xl font-display font-bold text-primary-foreground
               bg-gradient-to-r from-accent to-primary
               hover:scale-105 active:scale-95 transition-transform duration-150 lava-glow"
@@ -60,7 +63,7 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
             NÄCHSTES LEVEL
           </button>
           <button
-            onClick={onMenu}
+            onClick={handleMenu}
             className="px-8 py-3 rounded-xl font-display font-semibold
               glass-panel text-foreground
               hover:scale-105 active:scale-95 transition-transform duration-150"

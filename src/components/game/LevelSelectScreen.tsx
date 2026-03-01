@@ -1,5 +1,6 @@
 import { useGameStore } from '@/stores/gameStore';
 import { LEVELS } from '@/game/constants';
+import { useSoundClick } from '@/hooks/useSoundClick';
 
 interface LevelSelectScreenProps {
   onSelectLevel: (levelId: number) => void;
@@ -8,6 +9,7 @@ interface LevelSelectScreenProps {
 
 const LevelSelectScreen = ({ onSelectLevel, onBack }: LevelSelectScreenProps) => {
   const { maxUnlockedLevel } = useGameStore();
+  const handleBack = useSoundClick(onBack);
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm">
@@ -23,34 +25,13 @@ const LevelSelectScreen = ({ onSelectLevel, onBack }: LevelSelectScreenProps) =>
           {LEVELS.map((level) => {
             const unlocked = level.id <= maxUnlockedLevel;
             return (
-              <button
-                key={level.id}
-                onClick={() => unlocked && onSelectLevel(level.id)}
-                disabled={!unlocked}
-                className={`glass-panel p-3 text-left transition-all duration-150 ${
-                  unlocked
-                    ? 'hover:scale-105 active:scale-95 hover:border-primary/50 cursor-pointer'
-                    : 'opacity-40 cursor-not-allowed'
-                }`}
-              >
-                <div className="flex flex-col items-center gap-1">
-                  <span className="text-xl font-display font-black text-primary text-glow-primary">
-                    {unlocked ? level.id : '🔒'}
-                  </span>
-                  <h3 className="font-display font-bold text-foreground text-xs truncate w-full text-center">
-                    {level.name}
-                  </h3>
-                  <p className="text-[10px] text-muted-foreground font-body">
-                    {level.targetHeight}m
-                  </p>
-                </div>
-              </button>
+              <LevelButton key={level.id} level={level} unlocked={unlocked} onSelect={onSelectLevel} />
             );
           })}
         </div>
 
         <button
-          onClick={onBack}
+          onClick={handleBack}
           className="glass-panel px-8 py-3 rounded-xl font-display font-semibold text-foreground
             hover:scale-105 active:scale-95 transition-transform duration-150"
         >
@@ -58,6 +39,34 @@ const LevelSelectScreen = ({ onSelectLevel, onBack }: LevelSelectScreenProps) =>
         </button>
       </div>
     </div>
+  );
+};
+
+const LevelButton = ({ level, unlocked, onSelect }: { level: any; unlocked: boolean; onSelect: (id: number) => void }) => {
+  const handleClick = useSoundClick(() => unlocked && onSelect(level.id));
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={!unlocked}
+      className={`glass-panel p-3 text-left transition-all duration-150 ${
+        unlocked
+          ? 'hover:scale-105 active:scale-95 hover:border-primary/50 cursor-pointer'
+          : 'opacity-40 cursor-not-allowed'
+      }`}
+    >
+      <div className="flex flex-col items-center gap-1">
+        <span className="text-xl font-display font-black text-primary text-glow-primary">
+          {unlocked ? level.id : '🔒'}
+        </span>
+        <h3 className="font-display font-bold text-foreground text-xs truncate w-full text-center">
+          {level.name}
+        </h3>
+        <p className="text-[10px] text-muted-foreground font-body">
+          {level.targetHeight}m
+        </p>
+      </div>
+    </button>
   );
 };
 
