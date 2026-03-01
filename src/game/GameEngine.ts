@@ -600,6 +600,7 @@ export class GameEngine {
       this.levelCompleteTimer = 0;
       this.lavaY = this.lavaY + 200;
       stopMusic();
+      stopLavaSound();
       playLevelComplete();
       return;
     }
