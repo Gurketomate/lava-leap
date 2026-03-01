@@ -1,7 +1,7 @@
 import { useGameStore } from '@/stores/gameStore';
 
 const GameHUD = () => {
-  const { score, coins, lavaProximity, activePowerUps } = useGameStore();
+  const { score, coins, lavaProximity, activePowerUps, phase, screenShake } = useGameStore();
 
   return (
     <div className="absolute inset-0 pointer-events-none z-10">
