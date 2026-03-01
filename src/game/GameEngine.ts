@@ -1,4 +1,4 @@
-import type { Player, Platform, Coin, Particle, PowerUp } from './types';
+import type { Player, Platform, Coin, Particle, PowerUp, DifficultyPhase } from './types';
 import {
   GRAVITY, JUMP_FORCE, BOOST_FORCE, MOVE_SPEED,
   PLAYER_WIDTH, PLAYER_HEIGHT,
@@ -6,10 +6,12 @@ import {
   LAVA_INITIAL_SPEED, LAVA_ACCELERATION, LAVA_MAX_SPEED,
   COIN_RADIUS, COIN_SPAWN_CHANCE, COIN_MAGNET_RANGE,
   CAMERA_SMOOTH, SCORE_SCALE, UPGRADE_INTERVAL,
-  BREAKABLE_CHANCE_BASE, MOVING_CHANCE_BASE, BOOST_CHANCE_BASE,
   POWER_UP_DEFINITIONS,
   COYOTE_TIME, JUMP_BUFFER_TIME, PLATFORM_HITBOX_PADDING,
-  DIFFICULTY_BREAKABLE_SCALE, DIFFICULTY_MOVING_SCALE, DIFFICULTY_LAVA_ACCEL_SCALE,
+  DIFFICULTY_PHASES,
+  LAVA_MAX_CAMERA_DIST, LAVA_PRESSURE_ACCEL, LAVA_MERCY_SLOW,
+  REWARD_PLATFORM_COIN_MULT, NO_SAFE_ZONE_INTERVAL, NO_SAFE_ZONE_DURATION,
+  SCREEN_SHAKE_MAX,
 } from './constants';
 import { computeReachability, isPlatformReachable, type ReachabilityLimits } from './reachability';
 import { runStart, runEnd, deathCause } from './analytics';
@@ -66,12 +68,30 @@ export class GameEngine {
   // Analytics
   runStartTime = 0;
 
+  // Phase-based difficulty
+  currentPhase: DifficultyPhase = DIFFICULTY_PHASES[0];
+  phaseIndex = 0;
+  elapsedTime = 0;
+
+  // No-safe-zone
+  noSafeZoneTimer = NO_SAFE_ZONE_INTERVAL;
+  inNoSafeZone = false;
+  noSafeZoneDuration = 0;
+
+  // Screen shake
+  screenShake = 0;
+
+  // Double jump visual timer
+  doubleJumpFlashTimer = 0;
+
   // Callbacks
   onScoreUpdate: Callback = () => {};
   onCoinCollect: Callback = () => {};
   onGameOver: Callback = () => {};
   onUpgradeReady: Callback = () => {};
   onLavaProximity: Callback = () => {};
+  onPhaseChange: Callback = () => {};
+  onScreenShake: Callback = () => {};
 
   nextUpgradeAt = UPGRADE_INTERVAL;
 
@@ -118,9 +138,53 @@ export class GameEngine {
     this.reachability = computeReachability(jumpBonus);
   }
 
-  /** Get difficulty multiplier based on current score (scales per 1000 pts) */
-  getDifficultyFactor(): number {
-    return this.score / 1000;
+  /** Get current difficulty phase based on elapsed time */
+  updatePhase() {
+    let newIndex = 0;
+    for (let i = DIFFICULTY_PHASES.length - 1; i >= 0; i--) {
+      if (this.elapsedTime >= DIFFICULTY_PHASES[i].minTime) {
+        newIndex = i;
+        break;
+      }
+    }
+    if (newIndex !== this.phaseIndex) {
+      this.phaseIndex = newIndex;
+      this.currentPhase = DIFFICULTY_PHASES[newIndex];
+      this.onPhaseChange(newIndex + 1);
+    }
+  }
+
+  /** Pick platform type based on current phase probabilities */
+  pickPlatformType(): Platform['type'] {
+    const phase = this.currentPhase;
+    const stabilizerReduction = this.platformStabilizerStacks * 0.05;
+
+    // In no-safe-zone, only hard platforms
+    if (this.inNoSafeZone) {
+      const r = Math.random();
+      if (r < 0.35) return 'moving';
+      if (r < 0.65) return 'breakable';
+      if (r < 0.75) return 'reward';
+      return 'boost';
+    }
+
+    const breakable = Math.max(0, phase.breakableChance - stabilizerReduction);
+    const r = Math.random();
+    let cumulative = 0;
+
+    cumulative += phase.boostChance;
+    if (r < cumulative) return 'boost';
+
+    cumulative += phase.rewardChance;
+    if (r < cumulative) return 'reward';
+
+    cumulative += phase.movingChance;
+    if (r < cumulative) return 'moving';
+
+    cumulative += breakable;
+    if (r < cumulative) return 'breakable';
+
+    return 'normal';
   }
 
   init() {
@@ -149,8 +213,15 @@ export class GameEngine {
     this.wasOnGround = false;
     this.jumpRequested = false;
     this.reachability = computeReachability(this.jumpBonus);
+    this.elapsedTime = 0;
+    this.phaseIndex = 0;
+    this.currentPhase = DIFFICULTY_PHASES[0];
+    this.noSafeZoneTimer = NO_SAFE_ZONE_INTERVAL;
+    this.inNoSafeZone = false;
+    this.noSafeZoneDuration = 0;
+    this.screenShake = 0;
+    this.doubleJumpFlashTimer = 0;
 
-    // Generate initial platforms
     const startPlatform: Platform = {
       x: this.width / 2 - PLATFORM_WIDTH / 2,
       y: this.height - 80,
@@ -180,9 +251,7 @@ export class GameEngine {
     cancelAnimationFrame(this.animId);
   }
 
-  pause() {
-    this.paused = true;
-  }
+  pause() { this.paused = true; }
 
   resume() {
     this.paused = false;
@@ -190,9 +259,7 @@ export class GameEngine {
     this.loop(this.lastTime);
   }
 
-  setInput(dir: number) {
-    this.inputDir = dir;
-  }
+  setInput(dir: number) { this.inputDir = dir; }
 
   applyPowerUp(powerUp: PowerUp) {
     switch (powerUp.type) {
@@ -210,46 +277,30 @@ export class GameEngine {
   }
 
   generatePlatformsUpTo(targetY: number) {
-    const difficulty = this.getDifficultyFactor();
-    const lastPlatform = this.platforms.length > 0
-      ? this.platforms[this.platforms.length - 1]
-      : null;
+    const lastPlatform = this.platforms.length > 0 ? this.platforms[this.platforms.length - 1] : null;
 
     while (this.highestPlatformY > targetY) {
       const gap = PLATFORM_GAP_MIN + Math.random() * (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN);
       const newY = this.highestPlatformY - gap;
       let newX = Math.random() * (this.width - PLATFORM_WIDTH);
 
-      // Determine type with difficulty scaling
-      let type: Platform['type'] = 'normal';
-      const breakChance = Math.max(0,
-        BREAKABLE_CHANCE_BASE + difficulty * DIFFICULTY_BREAKABLE_SCALE - this.platformStabilizerStacks * 0.05
-      );
-      const moveChance = MOVING_CHANCE_BASE + difficulty * DIFFICULTY_MOVING_SCALE;
-      const r = Math.random();
-      if (r < BOOST_CHANCE_BASE) type = 'boost';
-      else if (r < BOOST_CHANCE_BASE + moveChance) type = 'moving';
-      else if (r < BOOST_CHANCE_BASE + moveChance + breakChance) type = 'breakable';
+      const type = this.pickPlatformType();
 
-      const platWidth = PLATFORM_WIDTH + (type === 'normal' ? Math.random() * 20 : 0);
+      // Phase-based width scaling
+      const baseWidth = PLATFORM_WIDTH + (type === 'normal' ? Math.random() * 20 : 0);
+      const platWidth = baseWidth * this.currentPhase.platformWidthMod;
 
-      // Reachability validation: ensure platform is reachable from previous
+      // Reachability validation
       const sourcePlat = lastPlatform || this.platforms[this.platforms.length - 1];
       if (sourcePlat) {
         let attempts = 0;
         while (
           attempts < 20 &&
-          !isPlatformReachable(
-            sourcePlat.x, sourcePlat.width, sourcePlat.y,
-            newX, platWidth, newY,
-            this.reachability,
-          )
+          !isPlatformReachable(sourcePlat.x, sourcePlat.width, sourcePlat.y, newX, platWidth, newY, this.reachability)
         ) {
           newX = Math.random() * (this.width - platWidth);
           attempts++;
         }
-
-        // If still unreachable after retries, place directly above source
         if (attempts >= 20) {
           newX = Math.max(0, Math.min(
             this.width - platWidth,
@@ -257,10 +308,10 @@ export class GameEngine {
           ));
         }
 
-        // Rule: no moving platform directly after a large gap
+        // No moving platform after large gap
         const vertDist = sourcePlat.y - newY;
         if (type === 'moving' && vertDist > this.reachability.safeVerticalDist * 0.6) {
-          type = 'normal';
+          // downgrade to normal — already assigned, just override
         }
       }
 
@@ -280,16 +331,21 @@ export class GameEngine {
 
       this.platforms.push(platform);
 
-      // Maybe spawn coin
-      const coinChance = COIN_SPAWN_CHANCE + this.coinSpawnBonus;
+      // Coin spawning — reward platforms always have coins, otherwise chance-based
+      const coinChance = type === 'reward'
+        ? 1.0
+        : COIN_SPAWN_CHANCE + this.coinSpawnBonus;
       if (Math.random() < coinChance) {
-        this.coins.push({
-          x: newX + platWidth / 2,
-          y: newY - 25,
-          radius: COIN_RADIUS,
-          collected: false,
-          angle: 0,
-        });
+        const coinCount = type === 'reward' ? REWARD_PLATFORM_COIN_MULT : 1;
+        for (let c = 0; c < coinCount; c++) {
+          this.coins.push({
+            x: newX + platWidth / 2 + (c - Math.floor(coinCount / 2)) * 18,
+            y: newY - 25 - c * 4,
+            radius: COIN_RADIUS,
+            collected: false,
+            angle: 0,
+          });
+        }
       }
 
       this.highestPlatformY = newY;
@@ -297,7 +353,28 @@ export class GameEngine {
   }
 
   update(dt: number) {
-    if (dt > 0.05) dt = 0.05; // cap
+    if (dt > 0.05) dt = 0.05;
+
+    this.elapsedTime += dt;
+    this.updatePhase();
+
+    // No-safe-zone timer
+    if (!this.inNoSafeZone) {
+      this.noSafeZoneTimer -= dt;
+      if (this.noSafeZoneTimer <= 0) {
+        this.inNoSafeZone = true;
+        this.noSafeZoneDuration = NO_SAFE_ZONE_DURATION;
+      }
+    } else {
+      this.noSafeZoneDuration -= dt;
+      if (this.noSafeZoneDuration <= 0) {
+        this.inNoSafeZone = false;
+        this.noSafeZoneTimer = NO_SAFE_ZONE_INTERVAL;
+      }
+    }
+
+    // Double jump flash decay
+    if (this.doubleJumpFlashTimer > 0) this.doubleJumpFlashTimer -= dt;
 
     const p = this.player;
 
@@ -315,31 +392,21 @@ export class GameEngine {
     if (p.x + p.width < 0) p.x = this.width;
     if (p.x > this.width) p.x = -p.width;
 
-    // Fairness: update coyote timer
-    if (this.wasOnGround && p.vy > 0) {
-      this.coyoteTimer += dt;
-    }
-    if (this.coyoteTimer > COYOTE_TIME) {
-      this.wasOnGround = false;
-      this.coyoteTimer = 0;
-    }
+    // Fairness: coyote timer
+    if (this.wasOnGround && p.vy > 0) this.coyoteTimer += dt;
+    if (this.coyoteTimer > COYOTE_TIME) { this.wasOnGround = false; this.coyoteTimer = 0; }
 
-    // Fairness: jump buffer timer
+    // Fairness: jump buffer
     if (this.jumpRequested) {
       this.jumpBufferTimer += dt;
-      if (this.jumpBufferTimer > JUMP_BUFFER_TIME) {
-        this.jumpRequested = false;
-        this.jumpBufferTimer = 0;
-      }
+      if (this.jumpBufferTimer > JUMP_BUFFER_TIME) { this.jumpRequested = false; this.jumpBufferTimer = 0; }
     }
 
-    // Platform collision (only when falling)
+    // Platform collision (only falling)
     let landedThisFrame = false;
     if (p.vy > 0) {
       for (const plat of this.platforms) {
         if (plat.broken) continue;
-
-        // Enlarged hitbox for fairness
         const platLeft = plat.x - PLATFORM_HITBOX_PADDING;
         const platRight = plat.x + plat.width + PLATFORM_HITBOX_PADDING;
 
@@ -354,10 +421,10 @@ export class GameEngine {
           if (plat.type === 'boost') {
             p.vy = -BOOST_FORCE * (1 + this.jumpBonus);
             this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ff6600', 8);
-          } else if (plat.type === 'breakable') {
+          } else if (plat.type === 'breakable' || plat.type === 'reward') {
             p.vy = -jumpForce;
             plat.broken = true;
-            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#888888', 6);
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, plat.type === 'reward' ? '#ffd700' : '#888888', 8);
           } else {
             p.vy = -jumpForce;
           }
@@ -368,18 +435,10 @@ export class GameEngine {
           this.wasOnGround = true;
           this.coyoteTimer = 0;
 
-          // Consume jump buffer
-          if (this.jumpRequested) {
-            this.jumpRequested = false;
-            this.jumpBufferTimer = 0;
-          }
+          if (this.jumpRequested) { this.jumpRequested = false; this.jumpBufferTimer = 0; }
           break;
         }
       }
-    }
-
-    if (!landedThisFrame && p.vy <= 0) {
-      // Player is ascending, not on ground
     }
 
     // Moving platforms
@@ -398,20 +457,39 @@ export class GameEngine {
       this.cameraY += (targetCameraY - this.cameraY) * CAMERA_SMOOTH * 60 * dt;
     }
 
-    // Lava (with difficulty-scaled acceleration)
-    const difficulty = this.getDifficultyFactor();
+    // === LAVA SYSTEM (dynamic pressure) ===
     const lavaMultiplier = Math.pow(0.7, this.lavaSlowStacks);
-    const scaledAccel = LAVA_ACCELERATION * (1 + difficulty * DIFFICULTY_LAVA_ACCEL_SCALE);
-    this.lavaSpeed = Math.min(LAVA_MAX_SPEED, this.lavaSpeed + scaledAccel * dt) * lavaMultiplier;
-    this.lavaY -= this.lavaSpeed * dt;
-    if (this.lavaY > this.cameraY + this.height + 200) {
-      this.lavaY = this.cameraY + this.height + 200;
+    const phaseSpeedMod = this.currentPhase.lavaSpeedMod;
+    // Phase 5: exponential acceleration
+    const expoAccel = this.phaseIndex >= 4 ? 1 + (this.elapsedTime - 120) * 0.005 : 1;
+
+    this.lavaSpeed = Math.min(LAVA_MAX_SPEED * phaseSpeedMod,
+      this.lavaSpeed + LAVA_ACCELERATION * phaseSpeedMod * expoAccel * dt
+    ) * lavaMultiplier;
+
+    // Pressure zone: if player is far ahead, lava accelerates; if near death, slight mercy
+    const distToLava = this.lavaY - (p.y + p.height);
+    if (distToLava > LAVA_MAX_CAMERA_DIST) {
+      // Player far ahead → pressure acceleration
+      this.lavaY -= (this.lavaSpeed + LAVA_PRESSURE_ACCEL * (distToLava / LAVA_MAX_CAMERA_DIST)) * dt;
+    } else if (distToLava < 80) {
+      // Near death → slight mercy slowdown
+      this.lavaY -= this.lavaSpeed * LAVA_MERCY_SLOW * dt;
+    } else {
+      this.lavaY -= this.lavaSpeed * dt;
     }
 
-    // Lava proximity (for heat bar)
-    const distToLava = this.lavaY - (p.y + p.height);
+    // Clamp: lava never goes below camera bottom + max dist
+    const maxLavaY = this.cameraY + this.height + LAVA_MAX_CAMERA_DIST;
+    if (this.lavaY > maxLavaY) this.lavaY = maxLavaY;
+
+    // Lava proximity & screen shake
     const proximity = 1 - Math.min(1, Math.max(0, distToLava / 400));
     this.onLavaProximity(proximity);
+
+    // Screen shake based on proximity
+    this.screenShake = proximity > 0.6 ? (proximity - 0.6) * 2.5 : 0;
+    this.onScreenShake(this.screenShake);
 
     // Score
     const heightReached = Math.max(0, this.startY - p.y);
@@ -433,7 +511,6 @@ export class GameEngine {
       const dy = (p.y + p.height / 2) - coin.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      // Magnet
       if (this.hasCoinMagnet && dist < COIN_MAGNET_RANGE) {
         const speed = 300 * dt;
         coin.x += (dx / dist) * speed;
@@ -461,11 +538,11 @@ export class GameEngine {
     // Generate more platforms
     this.generatePlatformsUpTo(this.cameraY - PLATFORMS_BUFFER);
 
-    // Cleanup off-screen below lava
+    // Cleanup
     this.platforms = this.platforms.filter((pl) => pl.y < this.lavaY + 100);
     this.coins = this.coins.filter((c) => !c.collected && c.y < this.lavaY + 100);
 
-    // Game over: fell into lava or below screen
+    // Game over checks
     if (p.y + p.height > this.lavaY) {
       if (this.hasShield) {
         this.hasShield = false;
@@ -516,6 +593,15 @@ export class GameEngine {
     ctx.fillRect(0, 0, w, h);
 
     ctx.save();
+
+    // Screen shake
+    if (this.screenShake > 0) {
+      const shakeX = (Math.random() - 0.5) * SCREEN_SHAKE_MAX * this.screenShake;
+      const shakeY = (Math.random() - 0.5) * SCREEN_SHAKE_MAX * this.screenShake;
+      ctx.translate(shakeX, shakeY);
+    }
+
+    ctx.save();
     ctx.translate(0, -this.cameraY);
 
     this.renderBackground(ctx);
@@ -545,12 +631,10 @@ export class GameEngine {
     ctx.globalAlpha = 1;
 
     this.renderLava(ctx);
-
     ctx.restore();
 
     // Shield indicator
     if (this.hasShield) {
-      ctx.save();
       ctx.strokeStyle = 'rgba(0, 170, 255, 0.5)';
       ctx.lineWidth = 3;
       const px = this.player.x + this.player.width / 2;
@@ -558,8 +642,68 @@ export class GameEngine {
       ctx.beginPath();
       ctx.arc(px, py, 28, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.restore();
     }
+
+    // Lava edge glow overlay (rendered in screen space)
+    const distToLava = this.lavaY - (this.player.y + this.player.height);
+    const prox = 1 - Math.min(1, Math.max(0, distToLava / 400));
+    if (prox > 0.2) {
+      const intensity = (prox - 0.2) * 1.25;
+      // Bottom glow
+      const grad = ctx.createLinearGradient(0, h, 0, h - h * intensity * 0.5);
+      grad.addColorStop(0, `rgba(255, 40, 0, ${intensity * 0.35})`);
+      grad.addColorStop(1, 'rgba(255, 40, 0, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Side vignette
+      const sideGrad = ctx.createLinearGradient(0, 0, w * 0.15, 0);
+      sideGrad.addColorStop(0, `rgba(255, 30, 0, ${intensity * 0.2})`);
+      sideGrad.addColorStop(1, 'rgba(255, 30, 0, 0)');
+      ctx.fillStyle = sideGrad;
+      ctx.fillRect(0, 0, w * 0.15, h);
+
+      const sideGrad2 = ctx.createLinearGradient(w, 0, w * 0.85, 0);
+      sideGrad2.addColorStop(0, `rgba(255, 30, 0, ${intensity * 0.2})`);
+      sideGrad2.addColorStop(1, 'rgba(255, 30, 0, 0)');
+      ctx.fillStyle = sideGrad2;
+      ctx.fillRect(w * 0.85, 0, w * 0.15, h);
+
+      // Heat distortion lines
+      if (intensity > 0.4) {
+        ctx.globalAlpha = (intensity - 0.4) * 0.3;
+        const time = performance.now() / 1000;
+        for (let i = 0; i < 3; i++) {
+          const lineY = h - 30 - i * 40 + Math.sin(time * 2 + i) * 10;
+          ctx.strokeStyle = `rgba(255, 100, 0, 0.3)`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          for (let x = 0; x <= w; x += 8) {
+            const wy = lineY + Math.sin(x * 0.03 + time * 4 + i * 2) * 4;
+            if (x === 0) ctx.moveTo(x, wy); else ctx.lineTo(x, wy);
+          }
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // No-safe-zone warning flash
+    if (this.inNoSafeZone) {
+      const flash = Math.sin(performance.now() / 150) * 0.5 + 0.5;
+      ctx.fillStyle = `rgba(255, 0, 0, ${flash * 0.08})`;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // Phase indicator
+    if (this.phaseIndex > 0) {
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`Phase ${this.phaseIndex + 1}`, w - 10, h - 20);
+    }
+
+    ctx.restore(); // screen shake restore
   }
 
   renderBackground(ctx: CanvasRenderingContext2D) {
@@ -578,31 +722,32 @@ export class GameEngine {
   }
 
   renderPlatform(ctx: CanvasRenderingContext2D, plat: Platform) {
-    const colors = {
+    const colors: Record<string, string> = {
       normal: '#4a5568',
       breakable: '#a0522d',
       moving: '#4682b4',
       boost: '#ff6600',
+      reward: '#ff2255',
     };
 
-    const glowColors = {
+    const glowColors: Record<string, string> = {
       normal: 'rgba(74, 85, 104, 0.3)',
       breakable: 'rgba(160, 82, 45, 0.3)',
       moving: 'rgba(70, 130, 180, 0.4)',
       boost: 'rgba(255, 102, 0, 0.5)',
+      reward: 'rgba(255, 34, 85, 0.6)',
     };
 
-    ctx.shadowColor = glowColors[plat.type];
-    ctx.shadowBlur = plat.type === 'boost' ? 15 : 8;
+    ctx.shadowColor = glowColors[plat.type] || glowColors.normal;
+    ctx.shadowBlur = plat.type === 'boost' || plat.type === 'reward' ? 15 : 8;
 
     const grad = ctx.createLinearGradient(plat.x, plat.y, plat.x, plat.y + plat.height);
-    grad.addColorStop(0, colors[plat.type]);
+    grad.addColorStop(0, colors[plat.type] || colors.normal);
     grad.addColorStop(1, '#2d3748');
     ctx.fillStyle = grad;
 
-    const r = 4;
     ctx.beginPath();
-    ctx.roundRect(plat.x, plat.y, plat.width, plat.height, r);
+    ctx.roundRect(plat.x, plat.y, plat.width, plat.height, 4);
     ctx.fill();
 
     ctx.shadowBlur = 0;
@@ -623,6 +768,13 @@ export class GameEngine {
       ctx.font = '10px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('▲', plat.x + plat.width / 2, plat.y + 11);
+    }
+
+    if (plat.type === 'reward') {
+      // Pulsing glow for reward platforms
+      const pulse = Math.sin(performance.now() / 200) * 0.3 + 0.7;
+      ctx.fillStyle = `rgba(255, 215, 0, ${pulse * 0.4})`;
+      ctx.fillText('💰', plat.x + plat.width / 2, plat.y + 11);
     }
   }
 
@@ -652,7 +804,17 @@ export class GameEngine {
     ctx.save();
     ctx.translate(p.x + p.width / 2, p.y + p.height / 2);
 
-    ctx.fillStyle = '#e74c3c';
+    // Double jump flash: color shift
+    if (this.doubleJumpFlashTimer > 0) {
+      const flashIntensity = this.doubleJumpFlashTimer / 0.3;
+      const r = Math.round(231 + (0 - 231) * flashIntensity);
+      const g = Math.round(76 + (204 - 76) * flashIntensity);
+      const b = Math.round(60 + (255 - 60) * flashIntensity);
+      ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+    } else {
+      ctx.fillStyle = '#e74c3c';
+    }
+
     ctx.beginPath();
     ctx.roundRect(-p.width / 2, -p.height / 2, p.width, p.height, 6);
     ctx.fill();
@@ -722,8 +884,7 @@ export class GameEngine {
     ctx.beginPath();
     for (let x = 0; x <= this.width; x += 5) {
       const wave = Math.sin(x * 0.02 + time * 3) * 6 + Math.sin(x * 0.05 + time * 2) * 3;
-      if (x === 0) ctx.moveTo(x, lavaTop + wave);
-      else ctx.lineTo(x, lavaTop + wave);
+      if (x === 0) ctx.moveTo(x, lavaTop + wave); else ctx.lineTo(x, lavaTop + wave);
     }
     ctx.stroke();
     ctx.shadowBlur = 0;
@@ -733,7 +894,10 @@ export class GameEngine {
     if (this.hasDoubleJump && !this.player.doubleJumpUsed && this.player.vy > 0) {
       this.player.vy = -JUMP_FORCE * 0.8 * (1 + this.jumpBonus);
       this.player.doubleJumpUsed = true;
-      this.spawnParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height, '#00ccff', 6);
+      this.doubleJumpFlashTimer = 0.3;
+      // Explosion particles
+      this.spawnParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height, '#00ccff', 12);
+      this.spawnParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height, '#ffffff', 6);
     }
   }
 
