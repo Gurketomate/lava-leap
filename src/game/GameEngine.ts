@@ -256,6 +256,7 @@ export class GameEngine {
     this.running = false;
     cancelAnimationFrame(this.animId);
     stopMusic();
+    stopLavaSound();
   }
 
   pause() { this.paused = true; }
