@@ -10,7 +10,7 @@ import LevelSelectScreen from '@/components/game/LevelSelectScreen';
 import { useGameStore } from '@/stores/gameStore';
 import { useAdStore } from '@/stores/adStore';
 import { GameEngine } from '@/game/GameEngine';
-import { LEVELS } from '@/game/constants';
+import { LEVELS, JUMP_FORCE } from '@/game/constants';
 import { upgradeChosen } from '@/game/analytics';
 import type { PowerUp } from '@/game/types';
 
