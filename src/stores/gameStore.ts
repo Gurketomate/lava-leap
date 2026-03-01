@@ -91,6 +91,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   upgradeChoices: [],
   currentLevel: 1,
   maxUnlockedLevel: 1,
+  runUsedAd: false,
+  runUsedPowerUp: false,
+  runUsedShield: false,
+  lastRunStars: 0,
+  levelStars: {},
 
   setScreen: (screen) => set({ screen }),
   setScore: (score) => set({ score }),
