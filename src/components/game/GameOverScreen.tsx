@@ -6,7 +6,7 @@ interface GameOverScreenProps {
 }
 
 const GameOverScreen = ({ onRestart, onMenu }: GameOverScreenProps) => {
-  const { score, highScore, coins } = useGameStore();
+  const { score, highScore, coins, currentLevel } = useGameStore();
   const isNewHigh = score >= highScore && score > 0;
 
   return (
