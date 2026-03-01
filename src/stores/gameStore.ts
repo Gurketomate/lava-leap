@@ -65,14 +65,15 @@ const loadFromStorage = () => {
       totalCoins: data.totalCoins || 0,
       upgradeLevels: data.upgradeLevels || {},
       maxUnlockedLevel: data.maxUnlockedLevel || 1,
+      levelStars: data.levelStars || {},
     };
   } catch {
-    return { highScore: 0, totalCoins: 0, upgradeLevels: {}, maxUnlockedLevel: 1 };
+    return { highScore: 0, totalCoins: 0, upgradeLevels: {}, maxUnlockedLevel: 1, levelStars: {} };
   }
 };
 
-const saveToStorage = (highScore: number, totalCoins: number, upgradeLevels: UpgradeLevels, maxUnlockedLevel: number) => {
-  localStorage.setItem('volcanoEscape', JSON.stringify({ highScore, totalCoins, upgradeLevels, maxUnlockedLevel }));
+const saveToStorage = (highScore: number, totalCoins: number, upgradeLevels: UpgradeLevels, maxUnlockedLevel: number, levelStars: LevelStars) => {
+  localStorage.setItem('volcanoEscape', JSON.stringify({ highScore, totalCoins, upgradeLevels, maxUnlockedLevel, levelStars }));
 };
 
 export const useGameStore = create<GameStore>((set, get) => ({
