@@ -192,7 +192,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (s.totalCoins < cost) return false;
     const newLevels = { ...s.upgradeLevels, [id]: level + 1 };
     const newTotal = s.totalCoins - cost;
-    saveToStorage(s.highScore, newTotal, newLevels, s.maxUnlockedLevel);
+    saveToStorage(s.highScore, newTotal, newLevels, s.maxUnlockedLevel, s.levelStars);
     set({ totalCoins: newTotal, upgradeLevels: newLevels });
     return true;
   },
