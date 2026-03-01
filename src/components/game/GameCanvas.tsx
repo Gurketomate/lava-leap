@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { GameEngine } from '@/game/GameEngine';
 import { useGameStore } from '@/stores/gameStore';
+import { unlockAudio } from '@/game/SoundManager';
 
 interface GameCanvasProps {
   onReady: (engine: GameEngine) => void;
