@@ -678,6 +678,7 @@ export class GameEngine {
         deathCause('fall');
         runEnd(this.score, (performance.now() - this.runStartTime) / 1000);
         stopMusic();
+        stopLavaSound();
         playDeath();
         this.onGameOver({ score: this.score, coins: this.coinCount });
         return;
