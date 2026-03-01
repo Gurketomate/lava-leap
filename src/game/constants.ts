@@ -59,8 +59,8 @@ export const NO_SAFE_ZONE_DURATION = 5; // seconds
 // Screen shake
 export const SCREEN_SHAKE_MAX = 8; // max px offset
 
-// Difficulty phases (time-based)
-import type { DifficultyPhase } from './types';
+// Difficulty phases (time-based, used within levels)
+import type { DifficultyPhase, LevelDefinition } from './types';
 
 export const DIFFICULTY_PHASES: DifficultyPhase[] = [
   { minTime: 0,   normalChance: 0.90, breakableChance: 0.02, movingChance: 0.00, boostChance: 0.08, rewardChance: 0.00, platformWidthMod: 1.15, lavaSpeedMod: 1.0 },
@@ -68,6 +68,20 @@ export const DIFFICULTY_PHASES: DifficultyPhase[] = [
   { minTime: 60,  normalChance: 0.42, breakableChance: 0.30, movingChance: 0.15, boostChance: 0.08, rewardChance: 0.05, platformWidthMod: 0.85, lavaSpeedMod: 1.2 },
   { minTime: 90,  normalChance: 0.30, breakableChance: 0.15, movingChance: 0.40, boostChance: 0.08, rewardChance: 0.07, platformWidthMod: 0.85, lavaSpeedMod: 1.3 },
   { minTime: 120, normalChance: 0.20, breakableChance: 0.25, movingChance: 0.35, boostChance: 0.10, rewardChance: 0.10, platformWidthMod: 0.80, lavaSpeedMod: 1.5 },
+];
+
+// Level definitions
+export const LEVELS: LevelDefinition[] = [
+  { id: 1,  name: 'Einstieg',         targetHeight: 300,  normalChance: 0.85, breakableChance: 0.02, movingChance: 0.05, boostChance: 0.08, rewardChance: 0.00, platformWidthMod: 1.20, lavaSpeedMod: 0.8,  lavaEndAccel: 1.2 },
+  { id: 2,  name: 'Erste Schritte',    targetHeight: 500,  normalChance: 0.75, breakableChance: 0.05, movingChance: 0.10, boostChance: 0.08, rewardChance: 0.02, platformWidthMod: 1.10, lavaSpeedMod: 0.9,  lavaEndAccel: 1.3 },
+  { id: 3,  name: 'Aufstieg',          targetHeight: 700,  normalChance: 0.65, breakableChance: 0.08, movingChance: 0.15, boostChance: 0.08, rewardChance: 0.04, platformWidthMod: 1.05, lavaSpeedMod: 1.0,  lavaEndAccel: 1.3 },
+  { id: 4,  name: 'Wankende Pfade',    targetHeight: 900,  normalChance: 0.55, breakableChance: 0.10, movingChance: 0.22, boostChance: 0.08, rewardChance: 0.05, platformWidthMod: 1.00, lavaSpeedMod: 1.1,  lavaEndAccel: 1.4 },
+  { id: 5,  name: 'Brüchiger Grund',   targetHeight: 1100, normalChance: 0.45, breakableChance: 0.22, movingChance: 0.18, boostChance: 0.08, rewardChance: 0.07, platformWidthMod: 0.95, lavaSpeedMod: 1.15, lavaEndAccel: 1.4 },
+  { id: 6,  name: 'Feuertanz',         targetHeight: 1300, normalChance: 0.40, breakableChance: 0.15, movingChance: 0.28, boostChance: 0.08, rewardChance: 0.09, platformWidthMod: 0.90, lavaSpeedMod: 1.25, lavaEndAccel: 1.5 },
+  { id: 7,  name: 'Schmale Grate',     targetHeight: 1500, normalChance: 0.35, breakableChance: 0.25, movingChance: 0.22, boostChance: 0.08, rewardChance: 0.10, platformWidthMod: 0.85, lavaSpeedMod: 1.3,  lavaEndAccel: 1.5 },
+  { id: 8,  name: 'Lavastrom',         targetHeight: 1800, normalChance: 0.30, breakableChance: 0.20, movingChance: 0.30, boostChance: 0.10, rewardChance: 0.10, platformWidthMod: 0.82, lavaSpeedMod: 1.4,  lavaEndAccel: 1.6 },
+  { id: 9,  name: 'Todeskrater',       targetHeight: 2200, normalChance: 0.25, breakableChance: 0.25, movingChance: 0.28, boostChance: 0.10, rewardChance: 0.12, platformWidthMod: 0.80, lavaSpeedMod: 1.5,  lavaEndAccel: 1.7 },
+  { id: 10, name: 'Vulkangipfel',      targetHeight: 2800, normalChance: 0.20, breakableChance: 0.28, movingChance: 0.30, boostChance: 0.10, rewardChance: 0.12, platformWidthMod: 0.78, lavaSpeedMod: 1.6,  lavaEndAccel: 2.0 },
 ];
 
 export const PERMANENT_UPGRADES = [
