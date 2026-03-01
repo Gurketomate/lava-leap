@@ -127,6 +127,7 @@ const Index = () => {
     engine.paused = false;
     engine.lastTime = performance.now();
     startMusic();
+    startLavaSound();
     engine.loop(performance.now());
   }, [store]);
 
