@@ -230,13 +230,14 @@ export const PERMANENT_UPGRADES = [
   {
     id: 'startShield',
     name: 'Startschild',
-    description: 'Starte mit Schild',
+    description: 'Starte mit Schild (1 Run, blockiert 1x Lava)',
     icon: '💎',
     maxLevel: 1,
     baseCost: 200,
     costMultiplier: 1,
     effectPerLevel: 1,
     effectUnit: '',
+    consumable: true, // consumed after each run
   },
 ];
 
