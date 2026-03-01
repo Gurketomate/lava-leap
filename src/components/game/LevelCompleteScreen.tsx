@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { useGameStore } from '@/stores/gameStore';
+import { useAdStore } from '@/stores/adStore';
 
 interface LevelCompleteScreenProps {
   onNextLevel: () => void;
@@ -7,6 +9,18 @@ interface LevelCompleteScreenProps {
 
 const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) => {
   const { score, coins, currentLevel } = useGameStore();
+  const { canShowMilestoneInterstitial, showInterstitial } = useAdStore();
+  const [adShown, setAdShown] = useState(false);
+
+  // Show milestone interstitial (every 5th level, with session/cooldown checks)
+  useEffect(() => {
+    if (!adShown && canShowMilestoneInterstitial(currentLevel)) {
+      setAdShown(true);
+      showInterstitial().then(() => {
+        console.log('[AdManager] Milestone interstitial after level', currentLevel);
+      });
+    }
+  }, [currentLevel, adShown, canShowMilestoneInterstitial, showInterstitial]);
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm">
