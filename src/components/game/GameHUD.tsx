@@ -35,6 +35,15 @@ const GameHUD = () => {
         </div>
       )}
 
+      {/* Phase indicator */}
+      {phase > 1 && (
+        <div className="absolute bottom-6 right-4">
+          <div className="glass-panel px-3 py-1 text-xs font-body text-muted-foreground">
+            Phase {phase}
+          </div>
+        </div>
+      )}
+
       {/* Heat Bar (Lava proximity) */}
       <div className="absolute bottom-0 left-0 w-full h-2">
         <div
