@@ -28,6 +28,7 @@ const Index = () => {
   useEffect(() => {
     store.loadPersisted();
     adStore.initSession();
+    useSettingsStore.getState().loadSettings();
   }, []);
 
   const getPermanentBonuses = useCallback(() => {
