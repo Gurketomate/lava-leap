@@ -248,6 +248,7 @@ export class GameEngine {
     this.runStartTime = performance.now();
     runStart();
     startMusic();
+    startLavaSound();
     this.loop(this.lastTime);
   }
 
