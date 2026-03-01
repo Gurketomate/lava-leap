@@ -88,6 +88,7 @@ const Index = () => {
 
     engine.applyPowerUp(powerUp);
     store.addPowerUp(powerUp);
+    store.markUsedPowerUp(); // Track for star rating
     store.setNextUpgradeAt(engine.nextUpgradeAt);
     upgradeChosen(powerUp.type);
     setUpgradeChoices([]);
