@@ -103,12 +103,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const newUnlocked = Math.min(LEVELS.length, Math.max(s.maxUnlockedLevel, s.currentLevel + 1));
     const newHigh = Math.max(s.highScore, s.score);
     const newTotal = s.totalCoins + s.coins;
-    saveToStorage(newHigh, newTotal, s.upgradeLevels, newUnlocked);
+    const newLevels = { ...s.upgradeLevels };
+    if (newLevels['startShield'] > 0) newLevels['startShield'] = 0;
+    saveToStorage(newHigh, newTotal, newLevels, newUnlocked);
     set({
       screen: 'levelComplete',
       highScore: newHigh,
       totalCoins: newTotal,
       maxUnlockedLevel: newUnlocked,
+      upgradeLevels: newLevels,
     });
   },
 
@@ -116,8 +119,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const s = get();
     const newHigh = Math.max(s.highScore, s.score);
     const newTotal = s.totalCoins + s.coins;
-    saveToStorage(newHigh, newTotal, s.upgradeLevels, s.maxUnlockedLevel);
-    set({ screen: 'gameOver', highScore: newHigh, totalCoins: newTotal });
+    const newLevels = { ...s.upgradeLevels };
+    if (newLevels['startShield'] > 0) newLevels['startShield'] = 0;
+    saveToStorage(newHigh, newTotal, newLevels, s.maxUnlockedLevel);
+    set({ screen: 'gameOver', highScore: newHigh, totalCoins: newTotal, upgradeLevels: newLevels });
   },
 
   resetRun: () => set({

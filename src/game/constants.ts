@@ -70,19 +70,128 @@ export const DIFFICULTY_PHASES: DifficultyPhase[] = [
   { minTime: 120, normalChance: 0.20, breakableChance: 0.25, movingChance: 0.35, boostChance: 0.10, rewardChance: 0.10, platformWidthMod: 0.80, lavaSpeedMod: 1.5 },
 ];
 
-// Level definitions
-export const LEVELS: LevelDefinition[] = [
-  { id: 1,  name: 'Einstieg',         targetHeight: 300,  normalChance: 0.85, breakableChance: 0.02, movingChance: 0.05, boostChance: 0.08, rewardChance: 0.00, platformWidthMod: 1.20, lavaSpeedMod: 0.8,  lavaEndAccel: 1.2 },
-  { id: 2,  name: 'Erste Schritte',    targetHeight: 500,  normalChance: 0.75, breakableChance: 0.05, movingChance: 0.10, boostChance: 0.08, rewardChance: 0.02, platformWidthMod: 1.10, lavaSpeedMod: 0.9,  lavaEndAccel: 1.3 },
-  { id: 3,  name: 'Aufstieg',          targetHeight: 700,  normalChance: 0.65, breakableChance: 0.08, movingChance: 0.15, boostChance: 0.08, rewardChance: 0.04, platformWidthMod: 1.05, lavaSpeedMod: 1.0,  lavaEndAccel: 1.3 },
-  { id: 4,  name: 'Wankende Pfade',    targetHeight: 900,  normalChance: 0.55, breakableChance: 0.10, movingChance: 0.22, boostChance: 0.08, rewardChance: 0.05, platformWidthMod: 1.00, lavaSpeedMod: 1.1,  lavaEndAccel: 1.4 },
-  { id: 5,  name: 'Brüchiger Grund',   targetHeight: 1100, normalChance: 0.45, breakableChance: 0.22, movingChance: 0.18, boostChance: 0.08, rewardChance: 0.07, platformWidthMod: 0.95, lavaSpeedMod: 1.15, lavaEndAccel: 1.4 },
-  { id: 6,  name: 'Feuertanz',         targetHeight: 1300, normalChance: 0.40, breakableChance: 0.15, movingChance: 0.28, boostChance: 0.08, rewardChance: 0.09, platformWidthMod: 0.90, lavaSpeedMod: 1.25, lavaEndAccel: 1.5 },
-  { id: 7,  name: 'Schmale Grate',     targetHeight: 1500, normalChance: 0.35, breakableChance: 0.25, movingChance: 0.22, boostChance: 0.08, rewardChance: 0.10, platformWidthMod: 0.85, lavaSpeedMod: 1.3,  lavaEndAccel: 1.5 },
-  { id: 8,  name: 'Lavastrom',         targetHeight: 1800, normalChance: 0.30, breakableChance: 0.20, movingChance: 0.30, boostChance: 0.10, rewardChance: 0.10, platformWidthMod: 0.82, lavaSpeedMod: 1.4,  lavaEndAccel: 1.6 },
-  { id: 9,  name: 'Todeskrater',       targetHeight: 2200, normalChance: 0.25, breakableChance: 0.25, movingChance: 0.28, boostChance: 0.10, rewardChance: 0.12, platformWidthMod: 0.80, lavaSpeedMod: 1.5,  lavaEndAccel: 1.7 },
-  { id: 10, name: 'Vulkangipfel',      targetHeight: 2800, normalChance: 0.20, breakableChance: 0.28, movingChance: 0.30, boostChance: 0.10, rewardChance: 0.12, platformWidthMod: 0.78, lavaSpeedMod: 1.6,  lavaEndAccel: 2.0 },
-];
+// Risk/reward coin scaling by level tier
+export const REWARD_COINS_BY_TIER: Record<string, number> = {
+  intro: 5,   // levels 1-5
+  mid: 7,     // levels 6-15
+  hard: 10,   // levels 16-30
+  elite: 12,  // levels 31+
+};
+
+export function getRewardCoinCount(levelId: number): number {
+  if (levelId <= 5) return REWARD_COINS_BY_TIER.intro;
+  if (levelId <= 15) return REWARD_COINS_BY_TIER.mid;
+  if (levelId <= 30) return REWARD_COINS_BY_TIER.hard;
+  return REWARD_COINS_BY_TIER.elite;
+}
+
+// Helper: lerp between values
+function lerp(a: number, b: number, t: number): number { return a + (b - a) * t; }
+
+// Mini-peak: every 5th level is slightly harder
+function miniPeak(id: number, base: number, extra: number): number {
+  return id % 5 === 0 ? base + extra : base;
+}
+
+// Level definitions (50 levels)
+export const LEVELS: LevelDefinition[] = (() => {
+  const levels: LevelDefinition[] = [];
+
+  for (let id = 1; id <= 50; id++) {
+    const t = (id - 1) / 49; // 0..1 across all levels
+    const peak = id % 5 === 0;
+
+    let name: string;
+    let targetHeight: number;
+    let normalChance: number;
+    let breakableChance: number;
+    let movingChance: number;
+    let boostChance: number;
+    let rewardChance: number;
+    let platformWidthMod: number;
+    let lavaSpeedMod: number;
+    let lavaEndAccel: number;
+
+    if (id <= 5) {
+      // INTRO tier
+      const lt = (id - 1) / 4;
+      name = ['Einstieg', 'Erste Schritte', 'Aufstieg', 'Leichter Wind', 'Gipfelblick'][id - 1];
+      targetHeight = Math.floor(lerp(250, 500, lt));
+      normalChance = lerp(0.88, 0.75, lt);
+      breakableChance = lerp(0.01, 0.05, lt);
+      movingChance = lerp(0.02, 0.10, lt);
+      boostChance = lerp(0.09, 0.08, lt);
+      rewardChance = lerp(0.00, 0.02, lt);
+      platformWidthMod = lerp(1.25, 1.10, lt);
+      lavaSpeedMod = lerp(0.70, 0.90, lt);
+      lavaEndAccel = lerp(1.1, 1.25, lt);
+    } else if (id <= 15) {
+      // MID tier
+      const lt = (id - 6) / 9;
+      const midNames = ['Wankende Pfade', 'Brüchiger Grund', 'Feuertanz', 'Schmale Grate', 'Lavastrom',
+        'Ascheregen', 'Glutpfad', 'Felssturz', 'Hitzewelle', 'Magmakern'];
+      name = midNames[id - 6];
+      targetHeight = Math.floor(lerp(550, 1200, lt));
+      normalChance = lerp(0.70, 0.45, lt);
+      breakableChance = lerp(0.06, 0.18, lt);
+      movingChance = lerp(0.12, 0.25, lt);
+      boostChance = 0.08;
+      rewardChance = lerp(0.04, 0.08, lt);
+      platformWidthMod = lerp(1.05, 0.88, lt);
+      lavaSpeedMod = lerp(0.95, 1.30, lt);
+      lavaEndAccel = lerp(1.25, 1.50, lt);
+    } else if (id <= 30) {
+      // HARD tier
+      const lt = (id - 16) / 14;
+      const hardNames = ['Todeskrater', 'Vulkangipfel', 'Obsidianbrücke', 'Flammentor', 'Kraterrand',
+        'Schattenfeuer', 'Lavafontäne', 'Glutregen', 'Schmelzofen', 'Feuerprobe',
+        'Magmastrom', 'Vulkanherz', 'Inferno', 'Feuersturm', 'Höllenschlund'];
+      name = hardNames[id - 16];
+      targetHeight = Math.floor(lerp(1300, 2500, lt));
+      normalChance = lerp(0.40, 0.22, lt);
+      breakableChance = lerp(0.20, 0.28, lt);
+      movingChance = lerp(0.25, 0.32, lt);
+      boostChance = lerp(0.08, 0.10, lt);
+      rewardChance = lerp(0.07, 0.12, lt);
+      platformWidthMod = lerp(0.85, 0.75, lt);
+      lavaSpeedMod = lerp(1.30, 1.70, lt);
+      lavaEndAccel = lerp(1.50, 1.80, lt);
+    } else {
+      // ELITE tier (31-50)
+      const lt = (id - 31) / 19;
+      const eliteNames = ['Aschekrone', 'Glutgipfel', 'Lavafall', 'Feuerkern', 'Schmelztiegel',
+        'Obsidiansturm', 'Magmaflut', 'Kratersee', 'Vulkanfaust', 'Flammengrab',
+        'Feuerodem', 'Glutwand', 'Lavazorn', 'Höllenritt', 'Magmaherz',
+        'Aschegeist', 'Vulkanzorn', 'Feuerseele', 'Glutkrone', 'Eruption'];
+      name = eliteNames[id - 31];
+      targetHeight = Math.floor(lerp(2600, 5000, lt));
+      normalChance = lerp(0.20, 0.10, lt);
+      breakableChance = lerp(0.28, 0.32, lt);
+      movingChance = lerp(0.32, 0.38, lt);
+      boostChance = lerp(0.10, 0.08, lt);
+      rewardChance = lerp(0.12, 0.14, lt);
+      platformWidthMod = lerp(0.75, 0.65, lt);
+      lavaSpeedMod = lerp(1.70, 2.20, lt);
+      lavaEndAccel = lerp(1.80, 2.50, lt);
+    }
+
+    // Mini-peak every 5th level
+    if (peak) {
+      lavaSpeedMod *= 1.08;
+      platformWidthMod *= 0.95;
+      breakableChance = Math.min(0.35, breakableChance + 0.03);
+      targetHeight = Math.floor(targetHeight * 1.15);
+    }
+
+    levels.push({
+      id, name, targetHeight,
+      normalChance, breakableChance, movingChance, boostChance, rewardChance,
+      platformWidthMod, lavaSpeedMod, lavaEndAccel,
+    });
+  }
+
+  return levels;
+})();
 
 export const PERMANENT_UPGRADES = [
   {
@@ -121,13 +230,14 @@ export const PERMANENT_UPGRADES = [
   {
     id: 'startShield',
     name: 'Startschild',
-    description: 'Starte mit Schild',
+    description: 'Starte mit Schild (1 Run, blockiert 1x Lava)',
     icon: '💎',
     maxLevel: 1,
     baseCost: 200,
     costMultiplier: 1,
     effectPerLevel: 1,
     effectUnit: '',
+    consumable: true, // consumed after each run
   },
 ];
 

@@ -12,7 +12,7 @@ import {
   LAVA_MIN_SPEED, LAVA_ADAPTIVE_MAX_SPEED, LAVA_MERCY_SLOW, LAVA_MERCY_THRESHOLD,
   LAVA_SURGE_INTERVAL, LAVA_SURGE_DURATION, LAVA_SURGE_MULTIPLIER,
   REWARD_PLATFORM_COIN_MULT, NO_SAFE_ZONE_INTERVAL, NO_SAFE_ZONE_DURATION,
-  SCREEN_SHAKE_MAX,
+  SCREEN_SHAKE_MAX, getRewardCoinCount,
 } from './constants';
 import { computeReachability, isPlatformReachable, type ReachabilityLimits } from './reachability';
 import { runStart, runEnd, deathCause } from './analytics';
@@ -282,6 +282,7 @@ export class GameEngine {
   generatePlatformsUpTo(targetY: number) {
     const lastPlatform = this.platforms.length > 0 ? this.platforms[this.platforms.length - 1] : null;
     const widthMod = this.currentLevelDef?.platformWidthMod ?? 1;
+    const levelId = this.currentLevelDef?.id ?? 1;
 
     while (this.highestPlatformY > targetY) {
       const gap = PLATFORM_GAP_MIN + Math.random() * (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN);
@@ -326,14 +327,40 @@ export class GameEngine {
         platform.originX = newX;
       }
 
+      // For reward platforms: make them harder AND spawn a safe alternative nearby
+      if (type === 'reward') {
+        platform.width = Math.max(35, platWidth * 0.7);
+        if (Math.random() < 0.5 && !platform.moveSpeed) {
+          platform.moveSpeed = 50 + Math.random() * 60;
+          platform.moveRange = 40 + Math.random() * 60;
+          platform.moveDir = Math.random() > 0.5 ? 1 : -1;
+          platform.originX = newX;
+        }
+        // Spawn safe alternative within 150px horizontal
+        const safeWidth = (PLATFORM_WIDTH + 15) * widthMod;
+        let safeX: number;
+        if (newX > this.width / 2) {
+          safeX = Math.max(0, newX - 80 - Math.random() * 70);
+        } else {
+          safeX = Math.min(this.width - safeWidth, newX + platWidth + 30 + Math.random() * 70);
+        }
+        const safeY = newY + (Math.random() * 15 - 5);
+        this.platforms.push({
+          x: safeX, y: safeY,
+          width: safeWidth, height: PLATFORM_HEIGHT,
+          type: 'normal', broken: false,
+        });
+      }
+
       this.platforms.push(platform);
 
       // Coin spawning
+      const rewardCoins = getRewardCoinCount(levelId);
       const coinChance = type === 'reward'
         ? 1.0
         : COIN_SPAWN_CHANCE + this.coinSpawnBonus;
       if (Math.random() < coinChance) {
-        const coinCount = type === 'reward' ? REWARD_PLATFORM_COIN_MULT : 1;
+        const coinCount = type === 'reward' ? rewardCoins : 1;
         for (let c = 0; c < coinCount; c++) {
           this.coins.push({
             x: newX + platWidth / 2 + (c - Math.floor(coinCount / 2)) * 18,
