@@ -247,6 +247,7 @@ export class GameEngine {
     this.lastTime = performance.now();
     this.runStartTime = performance.now();
     runStart();
+    startMusic();
     this.loop(this.lastTime);
   }
 
