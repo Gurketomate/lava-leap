@@ -20,6 +20,7 @@ export interface Platform {
   height: number;
   type: PlatformType;
   broken: boolean;
+  breakTimer?: number;
   moveDir?: number;
   moveSpeed?: number;
   moveRange?: number;
