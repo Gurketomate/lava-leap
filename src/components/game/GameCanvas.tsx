@@ -15,6 +15,7 @@ const GameCanvas = ({ onReady }: GameCanvasProps) => {
   const handleTouch = useCallback((e: React.TouchEvent | React.MouseEvent, isEnd = false) => {
     if (!engineRef.current || !engineRef.current.running) return;
     e.preventDefault();
+    unlockAudio();
 
     if (isEnd) {
       engineRef.current.setInput(0);

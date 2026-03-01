@@ -122,6 +122,7 @@ const Index = () => {
     engine.running = true;
     engine.paused = false;
     engine.lastTime = performance.now();
+    startMusic();
     engine.loop(performance.now());
   }, [store]);
 
