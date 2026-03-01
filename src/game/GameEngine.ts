@@ -486,6 +486,7 @@ export class GameEngine {
           } else {
             p.vy = -jumpForce;
           }
+          playJump();
 
           p.y = plat.y - p.height;
           p.doubleJumpUsed = false;
