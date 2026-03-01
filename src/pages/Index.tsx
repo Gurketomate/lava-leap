@@ -145,7 +145,7 @@ const Index = () => {
           onBack={() => store.setScreen('menu')}
         />
       )}
-      {store.screen === 'gameOver' && <GameOverScreen onRestart={handleRestart} onMenu={handleMenu} />}
+      {store.screen === 'gameOver' && <GameOverScreen onRestart={handleRestart} onMenu={handleMenu} onRevive={handleRevive} />}
       {store.screen === 'upgrade' && <UpgradeMenu choices={upgradeChoices} onSelect={handleUpgradeSelect} />}
       {store.screen === 'shop' && <PermanentShop onBack={() => store.setScreen('menu')} />}
       {store.screen === 'levelComplete' && <LevelCompleteScreen onNextLevel={handleNextLevel} onMenu={handleMenu} />}
