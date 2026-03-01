@@ -1,7 +1,6 @@
 /**
  * SoundManager – Web Audio API based, iPad-compatible.
- * Uses procedural oscillator sounds (no external files needed).
- * Handles AudioContext unlock on first user gesture (iOS requirement).
+ * Clean audio mix: separate music/SFX channels, ducking, SFX limiter, seamless loops.
  */
 
 let ctx: AudioContext | null = null;
@@ -15,6 +14,17 @@ let musicSource: AudioBufferSourceNode | null = null;
 let musicBuffer: AudioBuffer | null = null;
 let musicPlaying = false;
 
+// SFX concurrency limiter (max 3 simultaneous)
+let activeSfxCount = 0;
+const MAX_CONCURRENT_SFX = 3;
+
+// Ducking state
+let duckTimeout: ReturnType<typeof setTimeout> | null = null;
+const DUCK_AMOUNT = 0.8; // reduce music to 80% of current vol
+const DUCK_DURATION = 300; // ms
+let baseMusicVol = 0.4; // default 40%
+let baseSfxVol = 0.6;   // default 60%
+
 const ensureContext = (): AudioContext => {
   if (!ctx) {
     ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -23,14 +33,13 @@ const ensureContext = (): AudioContext => {
     masterGain.connect(ctx.destination);
 
     sfxGain = ctx.createGain();
-    sfxGain.gain.value = 0.5;
+    sfxGain.gain.value = baseSfxVol;
     sfxGain.connect(masterGain);
 
     musicGain = ctx.createGain();
-    musicGain.gain.value = 0.5;
+    musicGain.gain.value = baseMusicVol;
     musicGain.connect(masterGain);
 
-    // Generate cave ambience buffer
     musicBuffer = generateCaveAmbience();
   }
   return ctx;
@@ -43,13 +52,36 @@ export const unlockAudio = () => {
   if (c.state === 'suspended') {
     c.resume();
   }
-  // Play a silent buffer to fully unlock
-  const buf = c.createBuffer(1, 1, 22050);
+  const buf = c.createBuffer(1, 1, 44100);
   const src = c.createBufferSource();
   src.buffer = buf;
   src.connect(c.destination);
   src.start(0);
   unlocked = true;
+};
+
+// ─── Ducking: temporarily lower music when SFX plays ───
+
+const duckMusic = () => {
+  if (!musicGain || !musicPlaying) return;
+  const c = ensureContext();
+  const now = c.currentTime;
+  const duckedVol = baseMusicVol * DUCK_AMOUNT;
+
+  // Quick fade down
+  musicGain.gain.cancelScheduledValues(now);
+  musicGain.gain.setValueAtTime(musicGain.gain.value, now);
+  musicGain.gain.linearRampToValueAtTime(duckedVol, now + 0.02);
+
+  // Schedule fade back up
+  if (duckTimeout) clearTimeout(duckTimeout);
+  duckTimeout = setTimeout(() => {
+    if (!musicGain || !ctx) return;
+    const t = ctx.currentTime;
+    musicGain.gain.cancelScheduledValues(t);
+    musicGain.gain.setValueAtTime(musicGain.gain.value, t);
+    musicGain.gain.linearRampToValueAtTime(baseMusicVol, t + 0.1);
+  }, DUCK_DURATION);
 };
 
 // ─── Procedural Sound Generators ───
@@ -64,6 +96,10 @@ const playTone = (
 ) => {
   const c = ensureContext();
   if (c.state === 'suspended') return;
+  if (activeSfxCount >= MAX_CONCURRENT_SFX) return; // limiter
+
+  activeSfxCount++;
+  duckMusic();
 
   const osc = c.createOscillator();
   const gain = c.createGain();
@@ -82,18 +118,32 @@ const playTone = (
   gain.connect(sfxGain!);
   osc.start(c.currentTime + delayTime);
   osc.stop(c.currentTime + delayTime + duration);
+  osc.onended = () => { activeSfxCount = Math.max(0, activeSfxCount - 1); };
 };
 
 const playNoise = (duration: number, volume = 0.1) => {
   const c = ensureContext();
   if (c.state === 'suspended') return;
+  if (activeSfxCount >= MAX_CONCURRENT_SFX) return;
 
-  const bufferSize = c.sampleRate * duration;
-  const buffer = c.createBuffer(1, bufferSize, c.sampleRate);
+  activeSfxCount++;
+  duckMusic();
+
+  const sampleRate = c.sampleRate;
+  const bufferSize = sampleRate * duration;
+  const buffer = c.createBuffer(1, bufferSize, sampleRate);
   const data = buffer.getChannelData(0);
   for (let i = 0; i < bufferSize; i++) {
     data[i] = (Math.random() * 2 - 1) * volume;
   }
+  // Apply fade-in/out envelope to prevent clicks
+  const fadeLen = Math.min(512, bufferSize / 4);
+  for (let i = 0; i < fadeLen; i++) {
+    const env = i / fadeLen;
+    data[i] *= env;
+    data[bufferSize - 1 - i] *= env;
+  }
+
   const src = c.createBufferSource();
   src.buffer = buffer;
   const gain = c.createGain();
@@ -102,19 +152,18 @@ const playNoise = (duration: number, volume = 0.1) => {
   src.connect(gain);
   gain.connect(sfxGain!);
   src.start();
+  src.onended = () => { activeSfxCount = Math.max(0, activeSfxCount - 1); };
 };
 
 // ─── Event Sounds ───
 
-// Cooldown tracking to prevent overlaps
 let lastJumpTime = 0;
 let lastCoinTime = 0;
 
 export const playJump = () => {
   const now = performance.now();
-  if (now - lastJumpTime < 80) return; // prevent overlap
+  if (now - lastJumpTime < 80) return;
   lastJumpTime = now;
-  // Quick upward sweep
   playTone(280, 0.15, 'square', 0.15, 400);
   playTone(500, 0.08, 'sine', 0.08, 0, 0.03);
 };
@@ -123,20 +172,17 @@ export const playCoin = () => {
   const now = performance.now();
   if (now - lastCoinTime < 50) return;
   lastCoinTime = now;
-  // Coin bling: two quick high notes
   playTone(1200, 0.08, 'sine', 0.2);
   playTone(1600, 0.12, 'sine', 0.15, 0, 0.06);
 };
 
 export const playDeath = () => {
-  // Low rumble + descending tone
   playTone(200, 0.6, 'sawtooth', 0.25, -180);
   playNoise(0.4, 0.15);
   playTone(120, 0.8, 'sine', 0.2, -80, 0.1);
 };
 
 export const playPowerUp = () => {
-  // Rising arpeggio
   playTone(400, 0.15, 'sine', 0.2);
   playTone(600, 0.15, 'sine', 0.2, 0, 0.1);
   playTone(800, 0.15, 'sine', 0.2, 0, 0.2);
@@ -144,7 +190,6 @@ export const playPowerUp = () => {
 };
 
 export const playLevelComplete = () => {
-  // Victory fanfare
   playTone(523, 0.2, 'sine', 0.2);
   playTone(659, 0.2, 'sine', 0.2, 0, 0.15);
   playTone(784, 0.2, 'sine', 0.2, 0, 0.3);
@@ -152,40 +197,66 @@ export const playLevelComplete = () => {
 };
 
 export const playButtonClick = () => {
-  // Soft click
   playTone(800, 0.05, 'square', 0.1);
   playTone(600, 0.03, 'sine', 0.08, 0, 0.02);
 };
 
-// ─── Background Music (Procedural Cave Ambience Loop) ───
+// ─── Background Music (Seamless Cave Ambience Loop at 44.1kHz) ───
 
 function generateCaveAmbience(): AudioBuffer {
   const c = ensureContext();
-  const duration = 8; // 8 second loop
-  const sampleRate = c.sampleRate;
+  const sampleRate = Math.max(44100, c.sampleRate); // ensure ≥44.1kHz
+  const duration = 8;
   const length = sampleRate * duration;
   const buffer = c.createBuffer(2, length, sampleRate);
   const left = buffer.getChannelData(0);
   const right = buffer.getChannelData(1);
 
+  // Pre-compute frequencies that complete exact cycles in `duration` seconds
+  // to ensure seamless looping (no click at loop boundary)
+  const droneFreq1 = Math.round(55 * duration) / duration;   // ~55 Hz, exact cycles
+  const droneFreq2 = Math.round(82.5 * duration) / duration; // ~82.5 Hz
+  const padFreq = Math.round(110 * duration) / duration;     // ~110 Hz
+
   for (let i = 0; i < length; i++) {
     const t = i / sampleRate;
-    // Deep drone
-    const drone = Math.sin(t * 2 * Math.PI * 55) * 0.08 +
-                  Math.sin(t * 2 * Math.PI * 82.5) * 0.04;
-    // Slow pad
-    const pad = Math.sin(t * 2 * Math.PI * 110 + Math.sin(t * 0.5) * 2) * 0.03 *
-                (0.5 + 0.5 * Math.sin(t * 0.3));
-    // Subtle noise
-    const noise = (Math.random() * 2 - 1) * 0.01;
-    // Water drip-like sounds
-    const drip = Math.sin(t * 2 * Math.PI * 2000 * Math.exp(-((t % 3.7) * 8))) *
-                 0.02 * Math.max(0, 1 - (t % 3.7) * 8);
-    const drip2 = Math.sin(t * 2 * Math.PI * 1500 * Math.exp(-((t % 5.1) * 6))) *
-                  0.015 * Math.max(0, 1 - (t % 5.1) * 6);
+    const phase = t / duration; // 0..1 for envelope continuity
+
+    // Deep drone (exact cycle frequencies for seamless loop)
+    const drone = Math.sin(t * 2 * Math.PI * droneFreq1) * 0.08 +
+                  Math.sin(t * 2 * Math.PI * droneFreq2) * 0.04;
+
+    // Slow evolving pad with smooth modulation
+    const modSpeed = Math.round(0.5 * duration) / duration;
+    const pad = Math.sin(t * 2 * Math.PI * padFreq + Math.sin(t * 2 * Math.PI * modSpeed) * 2) * 0.03 *
+                (0.5 + 0.5 * Math.sin(t * 2 * Math.PI * (Math.round(0.3 * duration) / duration)));
+
+    // Filtered noise (very subtle)
+    const noise = (Math.random() * 2 - 1) * 0.008;
+
+    // Water drip sounds with smooth envelope
+    const dripPeriod1 = 3.7;
+    const dripPhase1 = t % dripPeriod1;
+    const dripEnv1 = Math.max(0, 1 - dripPhase1 * 8) * Math.min(1, dripPhase1 * 200);
+    const drip = Math.sin(t * 2 * Math.PI * 2000 * Math.exp(-dripPhase1 * 8)) * 0.015 * dripEnv1;
+
+    const dripPeriod2 = 5.1;
+    const dripPhase2 = t % dripPeriod2;
+    const dripEnv2 = Math.max(0, 1 - dripPhase2 * 6) * Math.min(1, dripPhase2 * 200);
+    const drip2 = Math.sin(t * 2 * Math.PI * 1500 * Math.exp(-dripPhase2 * 6)) * 0.012 * dripEnv2;
 
     left[i] = drone + pad + noise + drip;
     right[i] = drone + pad * 0.8 + noise + drip2;
+  }
+
+  // Cross-fade last 1024 samples with first 1024 for seamless loop
+  const crossFadeLen = 1024;
+  for (let i = 0; i < crossFadeLen; i++) {
+    const fade = i / crossFadeLen;
+    const revFade = 1 - fade;
+    // Blend end into start
+    left[length - crossFadeLen + i] = left[length - crossFadeLen + i] * revFade + left[i] * fade;
+    right[length - crossFadeLen + i] = right[length - crossFadeLen + i] * revFade + right[i] * fade;
   }
 
   return buffer;
@@ -206,29 +277,53 @@ export const startMusic = () => {
 export const stopMusic = () => {
   if (musicSource && musicPlaying) {
     try {
-      musicSource.stop();
-    } catch { /* already stopped */ }
-    musicSource = null;
-    musicPlaying = false;
+      // Fade out to prevent click
+      if (musicGain && ctx) {
+        const now = ctx.currentTime;
+        musicGain.gain.cancelScheduledValues(now);
+        musicGain.gain.setValueAtTime(musicGain.gain.value, now);
+        musicGain.gain.linearRampToValueAtTime(0, now + 0.05);
+      }
+      setTimeout(() => {
+        try { musicSource?.stop(); } catch { /* */ }
+        musicSource = null;
+        musicPlaying = false;
+        // Restore gain for next start
+        if (musicGain && ctx) {
+          musicGain.gain.setValueAtTime(baseMusicVol, ctx.currentTime);
+        }
+      }, 60);
+    } catch {
+      musicSource = null;
+      musicPlaying = false;
+    }
   }
 };
 
 export const pauseMusic = () => {
-  if (musicGain) {
-    musicGain.gain.setValueAtTime(0, ensureContext().currentTime);
+  if (musicGain && ctx) {
+    const now = ctx.currentTime;
+    musicGain.gain.cancelScheduledValues(now);
+    musicGain.gain.setValueAtTime(musicGain.gain.value, now);
+    musicGain.gain.linearRampToValueAtTime(0, now + 0.1);
   }
 };
 
 export const resumeMusic = () => {
-  if (musicGain) {
-    musicGain.gain.setValueAtTime(0.5, ensureContext().currentTime);
+  if (musicGain && ctx) {
+    const now = ctx.currentTime;
+    musicGain.gain.cancelScheduledValues(now);
+    musicGain.gain.setValueAtTime(0, now);
+    musicGain.gain.linearRampToValueAtTime(baseMusicVol, now + 0.1);
   }
 };
 
 export const setMusicVolume = (v: number) => {
+  baseMusicVol = v;
   if (musicGain) musicGain.gain.value = v;
 };
 
 export const setSfxVolume = (v: number) => {
+  baseSfxVol = v;
   if (sfxGain) sfxGain.gain.value = v;
 };
