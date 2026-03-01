@@ -622,6 +622,7 @@ export class GameEngine {
         this.coinCount++;
         this.onCoinCollect(this.coinCount);
         this.spawnParticles(coin.x, coin.y, '#ffd700', 5);
+        playCoin();
       }
       coin.angle += dt * 3;
     }
