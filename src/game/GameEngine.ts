@@ -467,34 +467,61 @@ export class GameEngine {
       this.cameraY += (targetCameraY - this.cameraY) * CAMERA_SMOOTH * 60 * dt;
     }
 
-    // === LAVA SYSTEM (dynamic pressure) ===
-    const lavaMultiplier = Math.pow(0.7, this.lavaSlowStacks);
+    // === ADAPTIVE LAVA SYSTEM ===
+    const lavaSlowMult = Math.pow(0.7, this.lavaSlowStacks);
     const phaseSpeedMod = this.currentPhase.lavaSpeedMod;
     // Phase 5: exponential acceleration
     const expoAccel = this.phaseIndex >= 4 ? 1 + (this.elapsedTime - 120) * 0.005 : 1;
 
-    this.lavaSpeed = Math.min(LAVA_MAX_SPEED * phaseSpeedMod,
-      this.lavaSpeed + LAVA_ACCELERATION * phaseSpeedMod * expoAccel * dt
-    ) * lavaMultiplier;
-
-    // Pressure zone: if player is far ahead, lava accelerates; if near death, slight mercy
-    const distToLava = this.lavaY - (p.y + p.height);
-    if (distToLava > LAVA_MAX_CAMERA_DIST) {
-      // Player far ahead → pressure acceleration
-      this.lavaY -= (this.lavaSpeed + LAVA_PRESSURE_ACCEL * (distToLava / LAVA_MAX_CAMERA_DIST)) * dt;
-    } else if (distToLava < 80) {
-      // Near death → slight mercy slowdown
-      this.lavaY -= this.lavaSpeed * LAVA_MERCY_SLOW * dt;
+    // Lava surge timer
+    if (!this.inLavaSurge) {
+      this.lavaSurgeTimer -= dt;
+      if (this.lavaSurgeTimer <= 0) {
+        this.inLavaSurge = true;
+        this.lavaSurgeDuration = LAVA_SURGE_DURATION;
+      }
     } else {
-      this.lavaY -= this.lavaSpeed * dt;
+      this.lavaSurgeDuration -= dt;
+      if (this.lavaSurgeDuration <= 0) {
+        this.inLavaSurge = false;
+        this.lavaSurgeTimer = LAVA_SURGE_INTERVAL;
+      }
     }
 
-    // Clamp: lava never goes below camera bottom + max dist
-    const maxLavaY = this.cameraY + this.height + LAVA_MAX_CAMERA_DIST;
-    if (this.lavaY > maxLavaY) this.lavaY = maxLavaY;
+    // Target distance = 30% of screen height
+    const targetDistance = this.height * LAVA_TARGET_DISTANCE_RATIO;
+    // Current distance (positive = player is above lava)
+    const currentDistance = this.lavaY - (p.y + p.height);
+    // Mercy threshold in px
+    const mercyDist = this.height * LAVA_MERCY_THRESHOLD;
 
-    // Lava proximity & screen shake
-    const proximity = 1 - Math.min(1, Math.max(0, distToLava / 400));
+    // Base speed grows with phase
+    const baseSpeed = LAVA_INITIAL_SPEED * phaseSpeedMod * expoAccel * (1 - this.lavaResistBonus);
+
+    // Adaptive: accelerate/decelerate based on distance vs target
+    let adaptiveSpeed = baseSpeed + (currentDistance - targetDistance) * LAVA_PRESSURE_FACTOR;
+
+    // Mercy: if player is very close, slow down
+    if (currentDistance < mercyDist) {
+      adaptiveSpeed *= LAVA_MERCY_SLOW;
+    }
+
+    // Surge bonus
+    if (this.inLavaSurge) {
+      adaptiveSpeed *= LAVA_SURGE_MULTIPLIER;
+    }
+
+    // Apply lava slow power-up
+    adaptiveSpeed *= lavaSlowMult;
+
+    // Clamp
+    adaptiveSpeed = Math.max(LAVA_MIN_SPEED * lavaSlowMult, Math.min(LAVA_ADAPTIVE_MAX_SPEED, adaptiveSpeed));
+
+    this.lavaSpeed = adaptiveSpeed;
+    this.lavaY -= adaptiveSpeed * dt;
+
+    // Lava proximity (0 = far, 1 = touching)
+    const proximity = 1 - Math.min(1, Math.max(0, currentDistance / (this.height * 0.5)));
     this.onLavaProximity(proximity);
 
     // Screen shake based on proximity
