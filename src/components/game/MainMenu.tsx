@@ -1,4 +1,5 @@
 import { useGameStore } from '@/stores/gameStore';
+import { useSoundClick } from '@/hooks/useSoundClick';
 
 interface MainMenuProps {
   onStart: () => void;
@@ -7,6 +8,8 @@ interface MainMenuProps {
 
 const MainMenu = ({ onStart, onShop }: MainMenuProps) => {
   const { highScore, totalCoins } = useGameStore();
+  const handleStart = useSoundClick(onStart);
+  const handleShop = useSoundClick(onShop);
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm">
@@ -42,7 +45,7 @@ const MainMenu = ({ onStart, onShop }: MainMenuProps) => {
         {/* Buttons */}
         <div className="flex flex-col gap-3 w-64">
           <button
-            onClick={onStart}
+            onClick={handleStart}
             className="w-full py-4 rounded-xl font-display font-bold text-lg text-primary-foreground
               bg-gradient-to-r from-primary to-lava-glow
               hover:scale-105 active:scale-95 transition-transform duration-150
@@ -51,7 +54,7 @@ const MainMenu = ({ onStart, onShop }: MainMenuProps) => {
             SPIELEN
           </button>
           <button
-            onClick={onShop}
+            onClick={handleShop}
             className="w-full py-3 rounded-xl font-display font-semibold text-sm
               glass-panel text-foreground hover:bg-muted/50
               hover:scale-105 active:scale-95 transition-transform duration-150"

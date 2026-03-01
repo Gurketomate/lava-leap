@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { useAdStore } from '@/stores/adStore';
 import { LEVELS } from '@/game/constants';
+import { useSoundClick } from '@/hooks/useSoundClick';
 
 interface GameOverScreenProps {
   onRestart: () => void;
@@ -28,6 +29,10 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
     }
   };
 
+  const handleRestart = useSoundClick(onRestart);
+  const handleMenu = useSoundClick(onMenu);
+  const handleReviveClick = useSoundClick(handleRevive);
+
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm">
       <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-destructive/20 to-transparent" />
@@ -44,7 +49,6 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
           )}
         </div>
 
-        {/* Close call retention message */}
         {closeCallMsg && (
           <div className="glass-panel px-6 py-3 text-center border border-accent/30">
             <p className="text-sm font-display font-bold text-accent text-glow-accent">
@@ -68,10 +72,9 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
           </div>
         </div>
 
-        {/* Rewarded Ad: Revive option — only 1x per run, voluntary */}
         {canRevive && (
           <button
-            onClick={handleRevive}
+            onClick={handleReviveClick}
             disabled={showingAd}
             className="px-8 py-3 rounded-xl font-display font-bold text-foreground
               glass-panel border border-accent/50
@@ -82,14 +85,13 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
           </button>
         )}
 
-        {/* Ad placeholder info */}
         <div className="glass-panel px-8 py-3 text-center opacity-30">
           <p className="text-xs text-muted-foreground font-body">📺 Werbeplatz (SDK ready)</p>
         </div>
 
         <div className="flex gap-3">
           <button
-            onClick={onRestart}
+            onClick={handleRestart}
             className="px-8 py-3 rounded-xl font-display font-bold text-primary-foreground
               bg-gradient-to-r from-primary to-lava-glow
               hover:scale-105 active:scale-95 transition-transform duration-150 lava-glow"
@@ -97,7 +99,7 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
             🔁 NOCHMAL
           </button>
           <button
-            onClick={onMenu}
+            onClick={handleMenu}
             className="px-8 py-3 rounded-xl font-display font-semibold
               glass-panel text-foreground
               hover:scale-105 active:scale-95 transition-transform duration-150"

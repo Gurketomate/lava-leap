@@ -1,4 +1,5 @@
 import type { PowerUp } from '@/game/types';
+import { useSoundClick } from '@/hooks/useSoundClick';
 
 interface UpgradeMenuProps {
   choices: PowerUp[];
@@ -18,21 +19,28 @@ const UpgradeMenu = ({ choices, onSelect }: UpgradeMenuProps) => {
 
         <div className="flex gap-4">
           {choices.map((choice) => (
-            <button
-              key={choice.type}
-              onClick={() => onSelect(choice)}
-              className="glass-panel p-6 w-52 flex flex-col items-center gap-3 text-center
-                hover:scale-105 active:scale-95 transition-all duration-200
-                hover:border-primary/50 cursor-pointer group"
-            >
-              <span className="text-4xl group-hover:animate-float">{choice.icon}</span>
-              <h3 className="font-display font-bold text-foreground text-lg">{choice.name}</h3>
-              <p className="text-sm text-muted-foreground font-body">{choice.description}</p>
-            </button>
+            <UpgradeChoice key={choice.type} choice={choice} onSelect={onSelect} />
           ))}
         </div>
       </div>
     </div>
+  );
+};
+
+const UpgradeChoice = ({ choice, onSelect }: { choice: PowerUp; onSelect: (p: PowerUp) => void }) => {
+  const handleClick = useSoundClick(() => onSelect(choice));
+
+  return (
+    <button
+      onClick={handleClick}
+      className="glass-panel p-6 w-52 flex flex-col items-center gap-3 text-center
+        hover:scale-105 active:scale-95 transition-all duration-200
+        hover:border-primary/50 cursor-pointer group"
+    >
+      <span className="text-4xl group-hover:animate-float">{choice.icon}</span>
+      <h3 className="font-display font-bold text-foreground text-lg">{choice.name}</h3>
+      <p className="text-sm text-muted-foreground font-body">{choice.description}</p>
+    </button>
   );
 };
 
