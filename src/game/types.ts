@@ -68,7 +68,21 @@ export interface PermanentUpgrade {
   effectUnit: string;
 }
 
-export type GameScreen = 'menu' | 'playing' | 'paused' | 'upgrade' | 'gameOver' | 'shop';
+export type GameScreen = 'menu' | 'playing' | 'paused' | 'upgrade' | 'gameOver' | 'shop' | 'levelComplete' | 'levelSelect';
+
+export interface LevelDefinition {
+  id: number;
+  name: string;
+  targetHeight: number; // score to reach
+  normalChance: number;
+  breakableChance: number;
+  movingChance: number;
+  boostChance: number;
+  rewardChance: number;
+  platformWidthMod: number;
+  lavaSpeedMod: number;
+  lavaEndAccel: number; // lava acceleration multiplier in last 20% of level
+}
 
 export interface GameState {
   screen: GameScreen;
@@ -78,9 +92,11 @@ export interface GameState {
   totalCoins: number;
   activePowerUps: PowerUp[];
   nextUpgradeAt: number;
-  lavaProximity: number; // 0-1 for heat bar
-  phase: number; // current difficulty phase 1-5
-  screenShake: number; // 0-1 shake intensity
+  lavaProximity: number;
+  phase: number;
+  screenShake: number;
+  currentLevel: number;
+  maxUnlockedLevel: number;
 }
 
 export interface DifficultyPhase {

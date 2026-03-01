@@ -1,38 +1,34 @@
 import { useGameStore } from '@/stores/gameStore';
 
-interface GameOverScreenProps {
-  onRestart: () => void;
+interface LevelCompleteScreenProps {
+  onNextLevel: () => void;
   onMenu: () => void;
 }
 
-const GameOverScreen = ({ onRestart, onMenu }: GameOverScreenProps) => {
-  const { score, highScore, coins, currentLevel } = useGameStore();
-  const isNewHigh = score >= highScore && score > 0;
+const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) => {
+  const { score, coins, currentLevel } = useGameStore();
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm">
-      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-destructive/20 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-accent/20 to-transparent" />
 
       <div className="flex flex-col items-center gap-6 animate-fade-in">
         <div className="text-center">
-          <h2 className="text-4xl md:text-5xl font-display font-black text-destructive">
-            LEVEL {currentLevel} — GAME OVER
+          <p className="text-xs text-accent font-display uppercase tracking-[0.3em] animate-float">
+            ⭐ GESCHAFFT ⭐
+          </p>
+          <h2 className="text-4xl md:text-5xl font-display font-black text-foreground mt-2">
+            LEVEL {currentLevel}
           </h2>
-          {isNewHigh && (
-            <p className="text-accent font-display font-bold text-lg mt-1 animate-float text-glow-accent">
-              ⭐ NEUER HIGHSCORE! ⭐
-            </p>
-          )}
+          <p className="text-lg text-accent font-display font-bold mt-1 text-glow-accent">
+            ABGESCHLOSSEN!
+          </p>
         </div>
 
         <div className="flex gap-4">
           <div className="glass-panel px-6 py-4 text-center min-w-[100px]">
-            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Score</p>
+            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Höhe</p>
             <p className="text-3xl font-display font-bold text-foreground">{score}</p>
-          </div>
-          <div className="glass-panel px-6 py-4 text-center min-w-[100px]">
-            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Best</p>
-            <p className="text-3xl font-display font-bold text-primary text-glow-primary">{Math.max(highScore, score)}</p>
           </div>
           <div className="glass-panel px-6 py-4 text-center min-w-[100px]">
             <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Münzen</p>
@@ -40,19 +36,14 @@ const GameOverScreen = ({ onRestart, onMenu }: GameOverScreenProps) => {
           </div>
         </div>
 
-        {/* Ad placeholder */}
-        <div className="glass-panel px-8 py-4 text-center opacity-40">
-          <p className="text-xs text-muted-foreground font-body">📺 Werbeplatz (SDK ready)</p>
-        </div>
-
         <div className="flex gap-3">
           <button
-            onClick={onRestart}
+            onClick={onNextLevel}
             className="px-8 py-3 rounded-xl font-display font-bold text-primary-foreground
-              bg-gradient-to-r from-primary to-lava-glow
+              bg-gradient-to-r from-accent to-primary
               hover:scale-105 active:scale-95 transition-transform duration-150 lava-glow"
           >
-            NOCHMAL
+            NÄCHSTES LEVEL
           </button>
           <button
             onClick={onMenu}
@@ -68,4 +59,4 @@ const GameOverScreen = ({ onRestart, onMenu }: GameOverScreenProps) => {
   );
 };
 
-export default GameOverScreen;
+export default LevelCompleteScreen;

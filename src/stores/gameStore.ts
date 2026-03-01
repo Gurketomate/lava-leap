@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { GameScreen, PowerUp } from '@/game/types';
-import { PERMANENT_UPGRADES } from '@/game/constants';
+import { PERMANENT_UPGRADES, LEVELS } from '@/game/constants';
 
 interface UpgradeLevels {
   [key: string]: number;
@@ -19,6 +19,8 @@ interface GameStore {
   screenShake: number;
   upgradeLevels: UpgradeLevels;
   upgradeChoices: PowerUp[];
+  currentLevel: number;
+  maxUnlockedLevel: number;
 
   setScreen: (screen: GameScreen) => void;
   setScore: (score: number) => void;
@@ -30,6 +32,8 @@ interface GameStore {
   addPowerUp: (p: PowerUp) => void;
   setUpgradeChoices: (choices: PowerUp[]) => void;
   setNextUpgradeAt: (n: number) => void;
+  setCurrentLevel: (level: number) => void;
+  completeLevel: () => void;
   gameOver: () => void;
   resetRun: () => void;
   purchasePermanentUpgrade: (id: string) => boolean;
@@ -45,14 +49,15 @@ const loadFromStorage = () => {
       highScore: data.highScore || 0,
       totalCoins: data.totalCoins || 0,
       upgradeLevels: data.upgradeLevels || {},
+      maxUnlockedLevel: data.maxUnlockedLevel || 1,
     };
   } catch {
-    return { highScore: 0, totalCoins: 0, upgradeLevels: {} };
+    return { highScore: 0, totalCoins: 0, upgradeLevels: {}, maxUnlockedLevel: 1 };
   }
 };
 
-const saveToStorage = (highScore: number, totalCoins: number, upgradeLevels: UpgradeLevels) => {
-  localStorage.setItem('volcanoEscape', JSON.stringify({ highScore, totalCoins, upgradeLevels }));
+const saveToStorage = (highScore: number, totalCoins: number, upgradeLevels: UpgradeLevels, maxUnlockedLevel: number) => {
+  localStorage.setItem('volcanoEscape', JSON.stringify({ highScore, totalCoins, upgradeLevels, maxUnlockedLevel }));
 };
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -68,6 +73,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   phase: 1,
   screenShake: 0,
   upgradeChoices: [],
+  currentLevel: 1,
+  maxUnlockedLevel: 1,
 
   setScreen: (screen) => set({ screen }),
   setScore: (score) => set({ score }),
@@ -89,12 +96,27 @@ export const useGameStore = create<GameStore>((set, get) => ({
   }),
   setUpgradeChoices: (upgradeChoices) => set({ upgradeChoices }),
   setNextUpgradeAt: (nextUpgradeAt) => set({ nextUpgradeAt }),
+  setCurrentLevel: (currentLevel) => set({ currentLevel }),
+
+  completeLevel: () => {
+    const s = get();
+    const newUnlocked = Math.min(LEVELS.length, Math.max(s.maxUnlockedLevel, s.currentLevel + 1));
+    const newHigh = Math.max(s.highScore, s.score);
+    const newTotal = s.totalCoins + s.coins;
+    saveToStorage(newHigh, newTotal, s.upgradeLevels, newUnlocked);
+    set({
+      screen: 'levelComplete',
+      highScore: newHigh,
+      totalCoins: newTotal,
+      maxUnlockedLevel: newUnlocked,
+    });
+  },
 
   gameOver: () => {
     const s = get();
     const newHigh = Math.max(s.highScore, s.score);
     const newTotal = s.totalCoins + s.coins;
-    saveToStorage(newHigh, newTotal, s.upgradeLevels);
+    saveToStorage(newHigh, newTotal, s.upgradeLevels, s.maxUnlockedLevel);
     set({ screen: 'gameOver', highScore: newHigh, totalCoins: newTotal });
   },
 
@@ -120,7 +142,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (s.totalCoins < cost) return false;
     const newLevels = { ...s.upgradeLevels, [id]: level + 1 };
     const newTotal = s.totalCoins - cost;
-    saveToStorage(s.highScore, newTotal, newLevels);
+    saveToStorage(s.highScore, newTotal, newLevels, s.maxUnlockedLevel);
     set({ totalCoins: newTotal, upgradeLevels: newLevels });
     return true;
   },
