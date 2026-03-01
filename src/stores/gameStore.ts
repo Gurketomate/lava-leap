@@ -6,6 +6,10 @@ interface UpgradeLevels {
   [key: string]: number;
 }
 
+interface LevelStars {
+  [levelId: number]: number; // 1-3
+}
+
 interface GameStore {
   screen: GameScreen;
   score: number;
@@ -22,6 +26,13 @@ interface GameStore {
   currentLevel: number;
   maxUnlockedLevel: number;
 
+  // Star tracking per run
+  runUsedAd: boolean;
+  runUsedPowerUp: boolean;
+  runUsedShield: boolean;
+  lastRunStars: number;
+  levelStars: LevelStars;
+
   setScreen: (screen: GameScreen) => void;
   setScore: (score: number) => void;
   setCoins: (coins: number) => void;
@@ -33,12 +44,16 @@ interface GameStore {
   setUpgradeChoices: (choices: PowerUp[]) => void;
   setNextUpgradeAt: (n: number) => void;
   setCurrentLevel: (level: number) => void;
+  markUsedAd: () => void;
+  markUsedPowerUp: () => void;
+  markUsedShield: () => void;
   completeLevel: () => void;
   gameOver: () => void;
   resetRun: () => void;
   purchasePermanentUpgrade: (id: string) => boolean;
   getUpgradeLevel: (id: string) => number;
   getUpgradeCost: (id: string) => number;
+  getStarsForLevel: (levelId: number) => number;
   loadPersisted: () => void;
 }
 
