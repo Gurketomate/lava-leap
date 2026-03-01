@@ -114,8 +114,8 @@ const Index = () => {
     const engine = engineRef.current;
     if (!engine) return;
     // Revive: push player up, give shield, restart engine
+    // Revive: extra life only — no shield, no power-ups
     engine.player.vy = -JUMP_FORCE;
-    engine.hasShield = true;
     engine.lavaY = engine.lavaY + 200; // push lava down
     store.setScreen('playing');
     engine.running = true;
