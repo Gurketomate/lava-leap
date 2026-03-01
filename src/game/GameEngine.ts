@@ -267,6 +267,7 @@ export class GameEngine {
   setInput(dir: number) { this.inputDir = dir; }
 
   applyPowerUp(powerUp: PowerUp) {
+    playPowerUp();
     switch (powerUp.type) {
       case 'doubleJump': this.hasDoubleJump = true; break;
       case 'lavaSlow': this.lavaSlowStacks++; break;
