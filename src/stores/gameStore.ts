@@ -15,6 +15,8 @@ interface GameStore {
   activePowerUps: PowerUp[];
   nextUpgradeAt: number;
   lavaProximity: number;
+  phase: number;
+  screenShake: number;
   upgradeLevels: UpgradeLevels;
   upgradeChoices: PowerUp[];
 
