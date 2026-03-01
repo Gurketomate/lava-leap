@@ -16,7 +16,7 @@ import {
 } from './constants';
 import { computeReachability, isPlatformReachable, type ReachabilityLimits } from './reachability';
 import { runStart, runEnd, deathCause } from './analytics';
-import { playJump, playCoin, playDeath, playPowerUp, playLevelComplete, startMusic, stopMusic } from './SoundManager';
+import { playJump, playCoin, playDeath, playPowerUp, playLevelComplete, startMusic, stopMusic, startLavaSound, stopLavaSound, updateLavaProximity } from './SoundManager';
 
 type Callback = (data: any) => void;
 
