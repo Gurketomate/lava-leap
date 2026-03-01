@@ -16,7 +16,7 @@ import {
 } from './constants';
 import { computeReachability, isPlatformReachable, type ReachabilityLimits } from './reachability';
 import { runStart, runEnd, deathCause } from './analytics';
-import { playJump, playCoin, playDeath, playPowerUp, playLevelComplete, startMusic, stopMusic } from './SoundManager';
+import { playJump, playCoin, playDeath, playPowerUp, playLevelComplete, startMusic, stopMusic, startLavaSound, stopLavaSound, updateLavaProximity } from './SoundManager';
 
 type Callback = (data: any) => void;
 
@@ -248,6 +248,7 @@ export class GameEngine {
     this.runStartTime = performance.now();
     runStart();
     startMusic();
+    startLavaSound();
     this.loop(this.lastTime);
   }
 
@@ -255,6 +256,7 @@ export class GameEngine {
     this.running = false;
     cancelAnimationFrame(this.animId);
     stopMusic();
+    stopLavaSound();
   }
 
   pause() { this.paused = true; }
@@ -481,14 +483,16 @@ export class GameEngine {
           if (plat.type === 'boost') {
             p.vy = -BOOST_FORCE * (1 + this.jumpBonus);
             this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ff6600', 8);
+            playJump(1.0); // max pitch for boost
           } else if (plat.type === 'breakable' || plat.type === 'reward') {
             p.vy = -jumpForce;
             plat.broken = true;
             this.spawnParticles(plat.x + plat.width / 2, plat.y, plat.type === 'reward' ? '#ffd700' : '#888888', 8);
+            playJump(0.5);
           } else {
             p.vy = -jumpForce;
+            playJump(0.4);
           }
-          playJump();
 
           p.y = plat.y - p.height;
           p.doubleJumpUsed = false;
@@ -579,6 +583,7 @@ export class GameEngine {
     // Lava proximity (0 = far, 1 = touching)
     const proximity = 1 - Math.min(1, Math.max(0, currentDistance / (this.height * 0.5)));
     this.onLavaProximity(proximity);
+    updateLavaProximity(proximity);
 
     // Screen shake based on proximity
     this.screenShake = proximity > 0.6 ? (proximity - 0.6) * 2.5 : 0;
@@ -595,6 +600,7 @@ export class GameEngine {
       this.levelCompleteTimer = 0;
       this.lavaY = this.lavaY + 200;
       stopMusic();
+      stopLavaSound();
       playLevelComplete();
       return;
     }
@@ -657,6 +663,7 @@ export class GameEngine {
         deathCause('lava');
         runEnd(this.score, (performance.now() - this.runStartTime) / 1000);
         stopMusic();
+        stopLavaSound();
         playDeath();
         this.onGameOver({ score: this.score, coins: this.coinCount });
         return;
@@ -671,6 +678,7 @@ export class GameEngine {
         deathCause('fall');
         runEnd(this.score, (performance.now() - this.runStartTime) / 1000);
         stopMusic();
+        stopLavaSound();
         playDeath();
         this.onGameOver({ score: this.score, coins: this.coinCount });
         return;

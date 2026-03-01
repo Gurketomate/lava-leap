@@ -1,6 +1,7 @@
 /**
  * SoundManager – Web Audio API based, iPad-compatible.
- * Clean audio mix: separate music/SFX channels, ducking, SFX limiter, seamless loops.
+ * Channels: Music (30-50%), SFX (50-70%), Lava (15-25%).
+ * Features: ducking, SFX limiter (max 4), seamless loops, lava proximity sound.
  */
 
 let ctx: AudioContext | null = null;
@@ -8,22 +9,31 @@ let unlocked = false;
 let masterGain: GainNode | null = null;
 let musicGain: GainNode | null = null;
 let sfxGain: GainNode | null = null;
+let lavaGain: GainNode | null = null;
 
 // Background music state
 let musicSource: AudioBufferSourceNode | null = null;
 let musicBuffer: AudioBuffer | null = null;
 let musicPlaying = false;
 
-// SFX concurrency limiter (max 3 simultaneous)
+// Lava ambient state
+let lavaSource: AudioBufferSourceNode | null = null;
+let lavaBuffer: AudioBuffer | null = null;
+let lavaPlaying = false;
+let lavaWarningOsc: OscillatorNode | null = null;
+let lavaWarningGain: GainNode | null = null;
+
+// SFX concurrency limiter
 let activeSfxCount = 0;
-const MAX_CONCURRENT_SFX = 3;
+const MAX_CONCURRENT_SFX = 4;
 
 // Ducking state
 let duckTimeout: ReturnType<typeof setTimeout> | null = null;
-const DUCK_AMOUNT = 0.8; // reduce music to 80% of current vol
-const DUCK_DURATION = 300; // ms
-let baseMusicVol = 0.4; // default 40%
-let baseSfxVol = 0.6;   // default 60%
+const DUCK_AMOUNT = 0.8;
+const DUCK_DURATION = 300;
+let baseMusicVol = 0.4;
+let baseSfxVol = 0.6;
+let baseLavaVol = 0.2;
 
 const ensureContext = (): AudioContext => {
   if (!ctx) {
@@ -40,18 +50,20 @@ const ensureContext = (): AudioContext => {
     musicGain.gain.value = baseMusicVol;
     musicGain.connect(masterGain);
 
+    lavaGain = ctx.createGain();
+    lavaGain.gain.value = 0; // starts silent, driven by proximity
+    lavaGain.connect(masterGain);
+
     musicBuffer = generateCaveAmbience();
+    lavaBuffer = generateLavaLoop();
   }
   return ctx;
 };
 
-/** Must be called from a user gesture (touch/click) to unlock AudioContext on iOS */
 export const unlockAudio = () => {
   const c = ensureContext();
   if (unlocked) return;
-  if (c.state === 'suspended') {
-    c.resume();
-  }
+  if (c.state === 'suspended') c.resume();
   const buf = c.createBuffer(1, 1, 44100);
   const src = c.createBufferSource();
   src.buffer = buf;
@@ -60,7 +72,7 @@ export const unlockAudio = () => {
   unlocked = true;
 };
 
-// ─── Ducking: temporarily lower music when SFX plays ───
+// ─── Ducking ───
 
 const duckMusic = () => {
   if (!musicGain || !musicPlaying) return;
@@ -68,12 +80,10 @@ const duckMusic = () => {
   const now = c.currentTime;
   const duckedVol = baseMusicVol * DUCK_AMOUNT;
 
-  // Quick fade down
   musicGain.gain.cancelScheduledValues(now);
   musicGain.gain.setValueAtTime(musicGain.gain.value, now);
   musicGain.gain.linearRampToValueAtTime(duckedVol, now + 0.02);
 
-  // Schedule fade back up
   if (duckTimeout) clearTimeout(duckTimeout);
   duckTimeout = setTimeout(() => {
     if (!musicGain || !ctx) return;
@@ -84,7 +94,7 @@ const duckMusic = () => {
   }, DUCK_DURATION);
 };
 
-// ─── Procedural Sound Generators ───
+// ─── Tone / Noise generators ───
 
 const playTone = (
   freq: number,
@@ -92,11 +102,12 @@ const playTone = (
   type: OscillatorType = 'sine',
   volume = 0.3,
   pitchDecay = 0,
-  delayTime = 0
+  delayTime = 0,
+  targetGain?: GainNode
 ) => {
   const c = ensureContext();
   if (c.state === 'suspended') return;
-  if (activeSfxCount >= MAX_CONCURRENT_SFX) return; // limiter
+  if (activeSfxCount >= MAX_CONCURRENT_SFX) return;
 
   activeSfxCount++;
   duckMusic();
@@ -115,7 +126,7 @@ const playTone = (
   gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delayTime + duration);
 
   osc.connect(gain);
-  gain.connect(sfxGain!);
+  gain.connect(targetGain || sfxGain!);
   osc.start(c.currentTime + delayTime);
   osc.stop(c.currentTime + delayTime + duration);
   osc.onended = () => { activeSfxCount = Math.max(0, activeSfxCount - 1); };
@@ -136,7 +147,6 @@ const playNoise = (duration: number, volume = 0.1) => {
   for (let i = 0; i < bufferSize; i++) {
     data[i] = (Math.random() * 2 - 1) * volume;
   }
-  // Apply fade-in/out envelope to prevent clicks
   const fadeLen = Math.min(512, bufferSize / 4);
   for (let i = 0; i < fadeLen; i++) {
     const env = i / fadeLen;
@@ -159,13 +169,20 @@ const playNoise = (duration: number, volume = 0.1) => {
 
 let lastJumpTime = 0;
 let lastCoinTime = 0;
+let lastLavaWarnTime = 0;
 
-export const playJump = () => {
+/**
+ * Jump sound with optional pitch shift based on velocity.
+ * @param velocityRatio 0..1 where 1 = max jump force (boost), affects pitch
+ */
+export const playJump = (velocityRatio = 0.5) => {
   const now = performance.now();
   if (now - lastJumpTime < 80) return;
   lastJumpTime = now;
-  playTone(280, 0.15, 'square', 0.15, 400);
-  playTone(500, 0.08, 'sine', 0.08, 0, 0.03);
+  // Base freq 250-400 based on jump strength, duration 0.1-0.15s, volume 30-40%
+  const baseFreq = 250 + velocityRatio * 150;
+  playTone(baseFreq, 0.12, 'square', 0.12, 300);
+  playTone(baseFreq + 200, 0.06, 'sine', 0.06, 0, 0.02);
 };
 
 export const playCoin = () => {
@@ -201,40 +218,132 @@ export const playButtonClick = () => {
   playTone(600, 0.03, 'sine', 0.08, 0, 0.02);
 };
 
+/** Short lava warning beep when proximity > 0.7 */
+export const playLavaWarning = () => {
+  const now = performance.now();
+  if (now - lastLavaWarnTime < 2000) return; // max every 2s
+  lastLavaWarnTime = now;
+  playTone(180, 0.3, 'sawtooth', 0.15, -60);
+  playTone(140, 0.2, 'sine', 0.1, 0, 0.15);
+};
+
+// ─── Lava Proximity Sound (own channel, 15-25%) ───
+
+/**
+ * Update lava ambient volume based on proximity (0=far, 1=touching).
+ * Call this every frame from GameEngine.
+ */
+export const updateLavaProximity = (proximity: number) => {
+  if (!lavaGain || !ctx) return;
+  // Map proximity to volume: 0 at <0.1, ramp to baseLavaVol at 1.0
+  const vol = proximity > 0.1
+    ? baseLavaVol * Math.min(1, (proximity - 0.1) / 0.9)
+    : 0;
+  // Smooth transition to avoid clicks
+  const now = ctx.currentTime;
+  lavaGain.gain.setTargetAtTime(vol, now, 0.1);
+
+  // Trigger warning beep at high proximity
+  if (proximity > 0.7) {
+    playLavaWarning();
+  }
+};
+
+function generateLavaLoop(): AudioBuffer {
+  const c = ensureContext();
+  const sampleRate = Math.max(44100, c.sampleRate);
+  const duration = 4;
+  const length = sampleRate * duration;
+  const buffer = c.createBuffer(2, length, sampleRate);
+  const left = buffer.getChannelData(0);
+  const right = buffer.getChannelData(1);
+
+  // Exact-cycle frequencies for seamless loop
+  const rumbleFreq = Math.round(40 * duration) / duration;
+  const crackleRate = Math.round(6 * duration) / duration;
+
+  for (let i = 0; i < length; i++) {
+    const t = i / sampleRate;
+    // Deep rumble
+    const rumble = Math.sin(t * 2 * Math.PI * rumbleFreq) * 0.15 +
+                   Math.sin(t * 2 * Math.PI * rumbleFreq * 1.5) * 0.06;
+    // Bubbling crackle (amplitude-modulated noise)
+    const bubbleEnv = (Math.sin(t * 2 * Math.PI * crackleRate) * 0.5 + 0.5);
+    const crackle = (Math.random() * 2 - 1) * 0.04 * bubbleEnv;
+    // Slow wavering
+    const waver = Math.sin(t * 2 * Math.PI * 0.5) * 0.02;
+
+    left[i] = rumble + crackle + waver;
+    right[i] = rumble + crackle * 0.8 + waver * 1.1;
+  }
+
+  // Crossfade for seamless loop
+  const crossFadeLen = 1024;
+  for (let i = 0; i < crossFadeLen; i++) {
+    const fade = i / crossFadeLen;
+    left[length - crossFadeLen + i] = left[length - crossFadeLen + i] * (1 - fade) + left[i] * fade;
+    right[length - crossFadeLen + i] = right[length - crossFadeLen + i] * (1 - fade) + right[i] * fade;
+  }
+
+  return buffer;
+}
+
+export const startLavaSound = () => {
+  const c = ensureContext();
+  if (lavaPlaying || !lavaBuffer || c.state === 'suspended') return;
+  lavaSource = c.createBufferSource();
+  lavaSource.buffer = lavaBuffer;
+  lavaSource.loop = true;
+  lavaSource.connect(lavaGain!);
+  lavaSource.start();
+  lavaPlaying = true;
+};
+
+export const stopLavaSound = () => {
+  if (lavaSource && lavaPlaying) {
+    try {
+      if (lavaGain && ctx) {
+        lavaGain.gain.setTargetAtTime(0, ctx.currentTime, 0.05);
+      }
+      setTimeout(() => {
+        try { lavaSource?.stop(); } catch { /* */ }
+        lavaSource = null;
+        lavaPlaying = false;
+      }, 100);
+    } catch {
+      lavaSource = null;
+      lavaPlaying = false;
+    }
+  }
+};
+
 // ─── Background Music (Seamless Cave Ambience Loop at 44.1kHz) ───
 
 function generateCaveAmbience(): AudioBuffer {
   const c = ensureContext();
-  const sampleRate = Math.max(44100, c.sampleRate); // ensure ≥44.1kHz
+  const sampleRate = Math.max(44100, c.sampleRate);
   const duration = 8;
   const length = sampleRate * duration;
   const buffer = c.createBuffer(2, length, sampleRate);
   const left = buffer.getChannelData(0);
   const right = buffer.getChannelData(1);
 
-  // Pre-compute frequencies that complete exact cycles in `duration` seconds
-  // to ensure seamless looping (no click at loop boundary)
-  const droneFreq1 = Math.round(55 * duration) / duration;   // ~55 Hz, exact cycles
-  const droneFreq2 = Math.round(82.5 * duration) / duration; // ~82.5 Hz
-  const padFreq = Math.round(110 * duration) / duration;     // ~110 Hz
+  const droneFreq1 = Math.round(55 * duration) / duration;
+  const droneFreq2 = Math.round(82.5 * duration) / duration;
+  const padFreq = Math.round(110 * duration) / duration;
 
   for (let i = 0; i < length; i++) {
     const t = i / sampleRate;
-    const phase = t / duration; // 0..1 for envelope continuity
 
-    // Deep drone (exact cycle frequencies for seamless loop)
     const drone = Math.sin(t * 2 * Math.PI * droneFreq1) * 0.08 +
                   Math.sin(t * 2 * Math.PI * droneFreq2) * 0.04;
 
-    // Slow evolving pad with smooth modulation
     const modSpeed = Math.round(0.5 * duration) / duration;
     const pad = Math.sin(t * 2 * Math.PI * padFreq + Math.sin(t * 2 * Math.PI * modSpeed) * 2) * 0.03 *
                 (0.5 + 0.5 * Math.sin(t * 2 * Math.PI * (Math.round(0.3 * duration) / duration)));
 
-    // Filtered noise (very subtle)
     const noise = (Math.random() * 2 - 1) * 0.008;
 
-    // Water drip sounds with smooth envelope
     const dripPeriod1 = 3.7;
     const dripPhase1 = t % dripPeriod1;
     const dripEnv1 = Math.max(0, 1 - dripPhase1 * 8) * Math.min(1, dripPhase1 * 200);
@@ -249,14 +358,11 @@ function generateCaveAmbience(): AudioBuffer {
     right[i] = drone + pad * 0.8 + noise + drip2;
   }
 
-  // Cross-fade last 1024 samples with first 1024 for seamless loop
   const crossFadeLen = 1024;
   for (let i = 0; i < crossFadeLen; i++) {
     const fade = i / crossFadeLen;
-    const revFade = 1 - fade;
-    // Blend end into start
-    left[length - crossFadeLen + i] = left[length - crossFadeLen + i] * revFade + left[i] * fade;
-    right[length - crossFadeLen + i] = right[length - crossFadeLen + i] * revFade + right[i] * fade;
+    left[length - crossFadeLen + i] = left[length - crossFadeLen + i] * (1 - fade) + left[i] * fade;
+    right[length - crossFadeLen + i] = right[length - crossFadeLen + i] * (1 - fade) + right[i] * fade;
   }
 
   return buffer;
@@ -265,7 +371,6 @@ function generateCaveAmbience(): AudioBuffer {
 export const startMusic = () => {
   const c = ensureContext();
   if (musicPlaying || !musicBuffer || c.state === 'suspended') return;
-
   musicSource = c.createBufferSource();
   musicSource.buffer = musicBuffer;
   musicSource.loop = true;
@@ -277,7 +382,6 @@ export const startMusic = () => {
 export const stopMusic = () => {
   if (musicSource && musicPlaying) {
     try {
-      // Fade out to prevent click
       if (musicGain && ctx) {
         const now = ctx.currentTime;
         musicGain.gain.cancelScheduledValues(now);
@@ -288,7 +392,6 @@ export const stopMusic = () => {
         try { musicSource?.stop(); } catch { /* */ }
         musicSource = null;
         musicPlaying = false;
-        // Restore gain for next start
         if (musicGain && ctx) {
           musicGain.gain.setValueAtTime(baseMusicVol, ctx.currentTime);
         }
@@ -326,4 +429,8 @@ export const setMusicVolume = (v: number) => {
 export const setSfxVolume = (v: number) => {
   baseSfxVol = v;
   if (sfxGain) sfxGain.gain.value = v;
+};
+
+export const setLavaVolume = (v: number) => {
+  baseLavaVol = v;
 };
