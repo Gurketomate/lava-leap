@@ -205,6 +205,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     return Math.floor(def.baseCost * Math.pow(def.costMultiplier, level));
   },
 
+  getStarsForLevel: (levelId) => get().levelStars[levelId] || 0,
+
   loadPersisted: () => {
     const data = loadFromStorage();
     set(data);
