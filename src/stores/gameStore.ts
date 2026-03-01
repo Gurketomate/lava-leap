@@ -105,6 +105,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     activePowerUps: [],
     nextUpgradeAt: 500,
     lavaProximity: 0,
+    phase: 1,
+    screenShake: 0,
     upgradeChoices: [],
   }),
 
