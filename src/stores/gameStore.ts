@@ -24,6 +24,8 @@ interface GameStore {
   setScore: (score: number) => void;
   setCoins: (coins: number) => void;
   setLavaProximity: (p: number) => void;
+  setPhase: (phase: number) => void;
+  setScreenShake: (shake: number) => void;
   addCoin: () => void;
   addPowerUp: (p: PowerUp) => void;
   setUpgradeChoices: (choices: PowerUp[]) => void;
