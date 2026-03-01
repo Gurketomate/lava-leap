@@ -143,6 +143,7 @@ const Index = () => {
         <MainMenu
           onStart={() => store.setScreen('levelSelect')}
           onShop={() => store.setScreen('shop')}
+          onSettings={() => setShowSettings(true)}
         />
       )}
       {store.screen === 'levelSelect' && (
