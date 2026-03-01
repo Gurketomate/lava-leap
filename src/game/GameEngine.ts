@@ -654,6 +654,8 @@ export class GameEngine {
         this.running = false;
         deathCause('lava');
         runEnd(this.score, (performance.now() - this.runStartTime) / 1000);
+        stopMusic();
+        playDeath();
         this.onGameOver({ score: this.score, coins: this.coinCount });
         return;
       }
