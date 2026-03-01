@@ -63,6 +63,7 @@ const Index = () => {
     engine.applyPowerUp(powerUp);
     store.addPowerUp(powerUp);
     store.setNextUpgradeAt(engine.nextUpgradeAt);
+    upgradeChosen(powerUp.type);
     setUpgradeChoices([]);
     store.setScreen('playing');
     engine.resume();
