@@ -33,10 +33,35 @@ export const COYOTE_TIME = 0.08; // 80ms
 export const JUMP_BUFFER_TIME = 0.1; // 100ms
 export const PLATFORM_HITBOX_PADDING = 6; // px extra on each side
 
-// Difficulty scaling per 1000 score
-export const DIFFICULTY_BREAKABLE_SCALE = 0.02; // +2% per 1000 score
+// Difficulty scaling per 1000 score (legacy, now overridden by phases)
+export const DIFFICULTY_BREAKABLE_SCALE = 0.02;
 export const DIFFICULTY_MOVING_SCALE = 0.015;
 export const DIFFICULTY_LAVA_ACCEL_SCALE = 0.02;
+
+// Lava pressure system
+export const LAVA_MAX_CAMERA_DIST = 600; // max px lava can be below camera bottom
+export const LAVA_PRESSURE_ACCEL = 1.5; // extra speed when player is far ahead
+export const LAVA_MERCY_SLOW = 0.6; // speed multiplier when player is close to death
+
+// Risk/reward
+export const REWARD_PLATFORM_COIN_MULT = 5;
+export const REWARD_PLATFORM_CHANCE = 0.04;
+export const NO_SAFE_ZONE_INTERVAL = 45; // seconds between no-safe-zone events
+export const NO_SAFE_ZONE_DURATION = 5; // seconds
+
+// Screen shake
+export const SCREEN_SHAKE_MAX = 8; // max px offset
+
+// Difficulty phases (time-based)
+import type { DifficultyPhase } from './types';
+
+export const DIFFICULTY_PHASES: DifficultyPhase[] = [
+  { minTime: 0,   normalChance: 0.90, breakableChance: 0.02, movingChance: 0.00, boostChance: 0.08, rewardChance: 0.00, platformWidthMod: 1.15, lavaSpeedMod: 1.0 },
+  { minTime: 30,  normalChance: 0.62, breakableChance: 0.08, movingChance: 0.20, boostChance: 0.08, rewardChance: 0.02, platformWidthMod: 1.0,  lavaSpeedMod: 1.1 },
+  { minTime: 60,  normalChance: 0.42, breakableChance: 0.30, movingChance: 0.15, boostChance: 0.08, rewardChance: 0.05, platformWidthMod: 0.85, lavaSpeedMod: 1.2 },
+  { minTime: 90,  normalChance: 0.30, breakableChance: 0.15, movingChance: 0.40, boostChance: 0.08, rewardChance: 0.07, platformWidthMod: 0.85, lavaSpeedMod: 1.3 },
+  { minTime: 120, normalChance: 0.20, breakableChance: 0.25, movingChance: 0.35, boostChance: 0.10, rewardChance: 0.10, platformWidthMod: 0.80, lavaSpeedMod: 1.5 },
+];
 
 export const PERMANENT_UPGRADES = [
   {
