@@ -327,29 +327,50 @@ export class GameEngine {
         platform.originX = newX;
       }
 
-      // For reward platforms: make them harder AND spawn a safe alternative nearby
+      // For reward platforms: make them genuinely harder + spawn a safe alternative
       if (type === 'reward') {
-        platform.width = Math.max(35, platWidth * 0.7);
-        if (Math.random() < 0.5 && !platform.moveSpeed) {
-          platform.moveSpeed = 50 + Math.random() * 60;
-          platform.moveRange = 40 + Math.random() * 60;
+        // Narrow the risk platform significantly
+        platform.width = Math.max(30, platWidth * 0.55);
+        // Always make it moving or breakable for extra difficulty
+        if (Math.random() < 0.6) {
+          platform.moveSpeed = 60 + Math.random() * 70;
+          platform.moveRange = 50 + Math.random() * 70;
           platform.moveDir = Math.random() > 0.5 ? 1 : -1;
           platform.originX = newX;
+        } else {
+          // Make it breakable instead
+          platform.type = 'reward'; // keep reward type for coins
+          platform.breakTimer = 0.4; // short break timer for pressure
         }
-        // Spawn safe alternative within 150px horizontal
-        const safeWidth = (PLATFORM_WIDTH + 15) * widthMod;
+        // Offset risk platform slightly higher to require a harder jump
+        platform.y -= 8 + Math.random() * 12;
+
+        // Spawn safe alternative within 150px horizontal — wider, stable, fewer coins
+        const safeWidth = (PLATFORM_WIDTH + 20) * widthMod;
         let safeX: number;
         if (newX > this.width / 2) {
-          safeX = Math.max(0, newX - 80 - Math.random() * 70);
+          safeX = Math.max(0, newX - 90 - Math.random() * 60);
         } else {
-          safeX = Math.min(this.width - safeWidth, newX + platWidth + 30 + Math.random() * 70);
+          safeX = Math.min(this.width - safeWidth, newX + platWidth + 40 + Math.random() * 60);
         }
-        const safeY = newY + (Math.random() * 15 - 5);
-        this.platforms.push({
+        const safeY = newY + (Math.random() * 10 - 3);
+        const safePlatform: Platform = {
           x: safeX, y: safeY,
           width: safeWidth, height: PLATFORM_HEIGHT,
           type: 'normal', broken: false,
-        });
+        };
+        this.platforms.push(safePlatform);
+
+        // Add 2 coins on the safe platform (vs full reward on risk)
+        for (let sc = 0; sc < 2; sc++) {
+          this.coins.push({
+            x: safeX + safeWidth / 2 + (sc - 0.5) * 18,
+            y: safeY - 25,
+            radius: COIN_RADIUS,
+            collected: false,
+            angle: 0,
+          });
+        }
       }
 
       this.platforms.push(platform);
