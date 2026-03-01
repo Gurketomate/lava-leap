@@ -8,8 +8,31 @@ interface LevelCompleteScreenProps {
   onMenu: () => void;
 }
 
+const StarDisplay = ({ stars }: { stars: number }) => (
+  <div className="flex gap-2 items-center justify-center">
+    {[1, 2, 3].map((i) => (
+      <span
+        key={i}
+        className={`text-4xl transition-all duration-500 ${
+          i <= stars ? 'scale-110 animate-float' : 'opacity-20 grayscale'
+        }`}
+        style={{ animationDelay: `${i * 0.15}s` }}
+      >
+        ⭐
+      </span>
+    ))}
+  </div>
+);
+
+const STAR_LABELS = [
+  '',
+  'Mit Werbung geschafft',
+  'Ohne Werbung geschafft',
+  'Perfekt! Ohne Werbung & Power-Ups',
+];
+
 const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) => {
-  const { score, coins, currentLevel } = useGameStore();
+  const { score, coins, currentLevel, lastRunStars } = useGameStore();
   const { canShowMilestoneInterstitial, showInterstitial } = useAdStore();
   const [adShown, setAdShown] = useState(false);
 
@@ -32,7 +55,7 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
       <div className="flex flex-col items-center gap-6 animate-fade-in">
         <div className="text-center">
           <p className="text-xs text-accent font-display uppercase tracking-[0.3em] animate-float">
-            ⭐ GESCHAFFT ⭐
+            GESCHAFFT
           </p>
           <h2 className="text-4xl md:text-5xl font-display font-black text-foreground mt-2">
             LEVEL {currentLevel}
@@ -41,6 +64,11 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
             ABGESCHLOSSEN!
           </p>
         </div>
+
+        <StarDisplay stars={lastRunStars} />
+        <p className="text-sm text-muted-foreground font-body text-center">
+          {STAR_LABELS[lastRunStars] || ''}
+        </p>
 
         <div className="flex gap-4">
           <div className="glass-panel px-6 py-4 text-center min-w-[100px]">

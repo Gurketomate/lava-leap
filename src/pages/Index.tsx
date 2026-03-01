@@ -51,6 +51,11 @@ const Index = () => {
     engine.setPermanentBonuses(bonuses.jumpBonus, bonuses.coinSpawnBonus, bonuses.lavaResistBonus, bonuses.startWithShield);
     engine.setLevel(levelDef);
 
+    // Track shield usage for star rating
+    if (bonuses.startWithShield) {
+      useGameStore.getState().markUsedShield();
+    }
+
     engine.onScoreUpdate = (score: number) => {
       useGameStore.getState().setScore(score);
     };
@@ -88,6 +93,7 @@ const Index = () => {
 
     engine.applyPowerUp(powerUp);
     store.addPowerUp(powerUp);
+    store.markUsedPowerUp(); // Track for star rating
     store.setNextUpgradeAt(engine.nextUpgradeAt);
     upgradeChosen(powerUp.type);
     setUpgradeChoices([]);
@@ -118,10 +124,9 @@ const Index = () => {
   const handleRevive = useCallback(() => {
     const engine = engineRef.current;
     if (!engine) return;
-    // Revive: push player up, give shield, restart engine
-    // Revive: extra life only — no shield, no power-ups
+    store.markUsedAd(); // Track for star rating
     engine.player.vy = -JUMP_FORCE;
-    engine.lavaY = engine.lavaY + 200; // push lava down
+    engine.lavaY = engine.lavaY + 200;
     store.setScreen('playing');
     engine.running = true;
     engine.paused = false;

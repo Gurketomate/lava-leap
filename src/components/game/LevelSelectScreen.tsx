@@ -8,7 +8,7 @@ interface LevelSelectScreenProps {
 }
 
 const LevelSelectScreen = ({ onSelectLevel, onBack }: LevelSelectScreenProps) => {
-  const { maxUnlockedLevel } = useGameStore();
+  const { maxUnlockedLevel, getStarsForLevel } = useGameStore();
   const handleBack = useSoundClick(onBack);
 
   return (
@@ -19,13 +19,17 @@ const LevelSelectScreen = ({ onSelectLevel, onBack }: LevelSelectScreenProps) =>
           <p className="text-sm text-muted-foreground font-body mt-1">
             {maxUnlockedLevel} von {LEVELS.length} freigeschaltet
           </p>
+          <p className="text-[10px] text-muted-foreground/60 font-body mt-2">
+            ⭐ = Werbung · ⭐⭐ = Ohne Werbung · ⭐⭐⭐ = Ohne Power-Ups
+          </p>
         </div>
 
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 w-full max-h-[60vh] overflow-y-auto pr-1">
           {LEVELS.map((level) => {
             const unlocked = level.id <= maxUnlockedLevel;
+            const stars = getStarsForLevel(level.id);
             return (
-              <LevelButton key={level.id} level={level} unlocked={unlocked} onSelect={onSelectLevel} />
+              <LevelButton key={level.id} level={level} unlocked={unlocked} stars={stars} onSelect={onSelectLevel} />
             );
           })}
         </div>
@@ -42,7 +46,7 @@ const LevelSelectScreen = ({ onSelectLevel, onBack }: LevelSelectScreenProps) =>
   );
 };
 
-const LevelButton = ({ level, unlocked, onSelect }: { level: any; unlocked: boolean; onSelect: (id: number) => void }) => {
+const LevelButton = ({ level, unlocked, stars, onSelect }: { level: any; unlocked: boolean; stars: number; onSelect: (id: number) => void }) => {
   const handleClick = useSoundClick(() => unlocked && onSelect(level.id));
 
   return (
@@ -62,9 +66,15 @@ const LevelButton = ({ level, unlocked, onSelect }: { level: any; unlocked: bool
         <h3 className="font-display font-bold text-foreground text-xs truncate w-full text-center">
           {level.name}
         </h3>
-        <p className="text-[10px] text-muted-foreground font-body">
-          {level.targetHeight}m
-        </p>
+        {unlocked && stars > 0 ? (
+          <p className="text-[10px]">
+            {'⭐'.repeat(stars)}{'☆'.repeat(3 - stars)}
+          </p>
+        ) : (
+          <p className="text-[10px] text-muted-foreground font-body">
+            {level.targetHeight}m
+          </p>
+        )}
       </div>
     </button>
   );

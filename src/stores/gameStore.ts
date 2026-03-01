@@ -6,6 +6,10 @@ interface UpgradeLevels {
   [key: string]: number;
 }
 
+interface LevelStars {
+  [levelId: number]: number; // 1-3
+}
+
 interface GameStore {
   screen: GameScreen;
   score: number;
@@ -22,6 +26,13 @@ interface GameStore {
   currentLevel: number;
   maxUnlockedLevel: number;
 
+  // Star tracking per run
+  runUsedAd: boolean;
+  runUsedPowerUp: boolean;
+  runUsedShield: boolean;
+  lastRunStars: number;
+  levelStars: LevelStars;
+
   setScreen: (screen: GameScreen) => void;
   setScore: (score: number) => void;
   setCoins: (coins: number) => void;
@@ -33,12 +44,16 @@ interface GameStore {
   setUpgradeChoices: (choices: PowerUp[]) => void;
   setNextUpgradeAt: (n: number) => void;
   setCurrentLevel: (level: number) => void;
+  markUsedAd: () => void;
+  markUsedPowerUp: () => void;
+  markUsedShield: () => void;
   completeLevel: () => void;
   gameOver: () => void;
   resetRun: () => void;
   purchasePermanentUpgrade: (id: string) => boolean;
   getUpgradeLevel: (id: string) => number;
   getUpgradeCost: (id: string) => number;
+  getStarsForLevel: (levelId: number) => number;
   loadPersisted: () => void;
 }
 
@@ -50,14 +65,15 @@ const loadFromStorage = () => {
       totalCoins: data.totalCoins || 0,
       upgradeLevels: data.upgradeLevels || {},
       maxUnlockedLevel: data.maxUnlockedLevel || 1,
+      levelStars: data.levelStars || {},
     };
   } catch {
-    return { highScore: 0, totalCoins: 0, upgradeLevels: {}, maxUnlockedLevel: 1 };
+    return { highScore: 0, totalCoins: 0, upgradeLevels: {}, maxUnlockedLevel: 1, levelStars: {} };
   }
 };
 
-const saveToStorage = (highScore: number, totalCoins: number, upgradeLevels: UpgradeLevels, maxUnlockedLevel: number) => {
-  localStorage.setItem('volcanoEscape', JSON.stringify({ highScore, totalCoins, upgradeLevels, maxUnlockedLevel }));
+const saveToStorage = (highScore: number, totalCoins: number, upgradeLevels: UpgradeLevels, maxUnlockedLevel: number, levelStars: LevelStars) => {
+  localStorage.setItem('volcanoEscape', JSON.stringify({ highScore, totalCoins, upgradeLevels, maxUnlockedLevel, levelStars }));
 };
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -75,6 +91,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   upgradeChoices: [],
   currentLevel: 1,
   maxUnlockedLevel: 1,
+  runUsedAd: false,
+  runUsedPowerUp: false,
+  runUsedShield: false,
+  lastRunStars: 0,
+  levelStars: {},
 
   setScreen: (screen) => set({ screen }),
   setScore: (score) => set({ score }),
@@ -98,6 +119,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setNextUpgradeAt: (nextUpgradeAt) => set({ nextUpgradeAt }),
   setCurrentLevel: (currentLevel) => set({ currentLevel }),
 
+  markUsedAd: () => set({ runUsedAd: true }),
+  markUsedPowerUp: () => set({ runUsedPowerUp: true }),
+  markUsedShield: () => set({ runUsedShield: true }),
+
   completeLevel: () => {
     const s = get();
     const newUnlocked = Math.min(LEVELS.length, Math.max(s.maxUnlockedLevel, s.currentLevel + 1));
@@ -105,13 +130,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const newTotal = s.totalCoins + s.coins;
     const newLevels = { ...s.upgradeLevels };
     if (newLevels['startShield'] > 0) newLevels['startShield'] = 0;
-    saveToStorage(newHigh, newTotal, newLevels, newUnlocked);
+
+    // Calculate stars
+    let stars = 3;
+    if (s.runUsedAd) {
+      stars = 1;
+    } else if (s.runUsedPowerUp || s.runUsedShield) {
+      stars = 2;
+    }
+
+    // Keep best stars
+    const newLevelStars = { ...s.levelStars };
+    const prev = newLevelStars[s.currentLevel] || 0;
+    newLevelStars[s.currentLevel] = Math.max(prev, stars);
+
+    saveToStorage(newHigh, newTotal, newLevels, newUnlocked, newLevelStars);
     set({
       screen: 'levelComplete',
       highScore: newHigh,
       totalCoins: newTotal,
       maxUnlockedLevel: newUnlocked,
       upgradeLevels: newLevels,
+      lastRunStars: stars,
+      levelStars: newLevelStars,
     });
   },
 
@@ -121,7 +162,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const newTotal = s.totalCoins + s.coins;
     const newLevels = { ...s.upgradeLevels };
     if (newLevels['startShield'] > 0) newLevels['startShield'] = 0;
-    saveToStorage(newHigh, newTotal, newLevels, s.maxUnlockedLevel);
+    saveToStorage(newHigh, newTotal, newLevels, s.maxUnlockedLevel, s.levelStars);
     set({ screen: 'gameOver', highScore: newHigh, totalCoins: newTotal, upgradeLevels: newLevels });
   },
 
@@ -135,6 +176,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     phase: 1,
     screenShake: 0,
     upgradeChoices: [],
+    runUsedAd: false,
+    runUsedPowerUp: false,
+    runUsedShield: false,
+    lastRunStars: 0,
   }),
 
   purchasePermanentUpgrade: (id) => {
@@ -147,7 +192,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (s.totalCoins < cost) return false;
     const newLevels = { ...s.upgradeLevels, [id]: level + 1 };
     const newTotal = s.totalCoins - cost;
-    saveToStorage(s.highScore, newTotal, newLevels, s.maxUnlockedLevel);
+    saveToStorage(s.highScore, newTotal, newLevels, s.maxUnlockedLevel, s.levelStars);
     set({ totalCoins: newTotal, upgradeLevels: newLevels });
     return true;
   },
@@ -159,6 +204,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const level = get().upgradeLevels[id] || 0;
     return Math.floor(def.baseCost * Math.pow(def.costMultiplier, level));
   },
+
+  getStarsForLevel: (levelId) => get().levelStars[levelId] || 0,
 
   loadPersisted: () => {
     const data = loadFromStorage();
