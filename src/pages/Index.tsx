@@ -91,8 +91,10 @@ const Index = () => {
   }, [store]);
 
   const handleRestart = useCallback(() => {
+    adStore.recordDeath();
+    adStore.resetRunAdState();
     startLevel(store.currentLevel);
-  }, [startLevel, store.currentLevel]);
+  }, [startLevel, store.currentLevel, adStore]);
 
   const handleNextLevel = useCallback(() => {
     const nextId = store.currentLevel + 1;
