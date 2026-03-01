@@ -19,7 +19,7 @@ const LevelSelectScreen = ({ onSelectLevel, onBack }: LevelSelectScreenProps) =>
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 w-full max-h-[60vh] overflow-y-auto pr-1">
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 w-full max-h-[60vh] overflow-y-auto pr-1">
           {LEVELS.map((level) => {
             const unlocked = level.id <= maxUnlockedLevel;
             return (
