@@ -843,6 +843,21 @@ export class GameEngine {
       ctx.stroke();
     }
 
+    // Invincibility aura
+    if (this.isInvincible) {
+      const pulse = Math.sin(performance.now() / 100) * 0.3 + 0.7;
+      ctx.strokeStyle = `rgba(255, 220, 0, ${pulse * 0.7})`;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#ffdd00';
+      ctx.shadowBlur = 15;
+      const px = this.player.x + this.player.width / 2;
+      const py = this.player.y + this.player.height / 2 - this.cameraY;
+      ctx.beginPath();
+      ctx.arc(px, py, 30, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
     // Lava edge glow overlay
     const distToLava = this.lavaY - (this.player.y + this.player.height);
     const prox = 1 - Math.min(1, Math.max(0, distToLava / 400));
