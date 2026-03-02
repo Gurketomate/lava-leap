@@ -242,6 +242,9 @@ export class GameEngine {
     this.lavaSurgeDuration = 0;
     this.screenShake = 0;
     this.doubleJumpFlashTimer = 0;
+    this.invincibleTimer = 0;
+    this.isInvincible = false;
+    this.lavaControlPush = 0;
     this.levelComplete = false;
     this.levelCompleteTimer = 0;
 
