@@ -64,7 +64,7 @@ const loadFromStorage = () => {
       highScore: data.highScore || 0,
       totalCoins: data.totalCoins || 0,
       upgradeLevels: data.upgradeLevels || {},
-      maxUnlockedLevel: data.maxUnlockedLevel || 1,
+      maxUnlockedLevel: 50, // TEST: all levels unlocked
       levelStars: data.levelStars || {},
     };
   } catch {
