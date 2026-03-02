@@ -168,9 +168,11 @@ export class GameEngine {
     // In no-safe-zone, only hard platforms
     if (this.inNoSafeZone) {
       const r = Math.random();
-      if (r < 0.35) return 'moving';
-      if (r < 0.65) return 'breakable';
-      if (r < 0.75) return 'reward';
+      if (r < 0.25) return 'moving';
+      if (r < 0.45) return 'breakable';
+      if (r < 0.55) return 'vanishing';
+      if (r < 0.65) return 'reward';
+      if (r < 0.75) return 'lavaControl';
       return 'boost';
     }
 
@@ -183,6 +185,18 @@ export class GameEngine {
 
     cumulative += level.rewardChance;
     if (r < cumulative) return 'reward';
+
+    cumulative += level.lavaControlChance;
+    if (r < cumulative) return 'lavaControl';
+
+    cumulative += level.teleportChance;
+    if (r < cumulative) return 'teleport';
+
+    cumulative += level.invincibleChance;
+    if (r < cumulative) return 'invincible';
+
+    cumulative += level.vanishingChance;
+    if (r < cumulative) return 'vanishing';
 
     cumulative += level.movingChance;
     if (r < cumulative) return 'moving';
