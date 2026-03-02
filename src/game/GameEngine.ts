@@ -940,12 +940,19 @@ export class GameEngine {
   }
 
   renderPlatform(ctx: CanvasRenderingContext2D, plat: Platform) {
+    // Skip invisible vanishing platforms
+    if (plat.type === 'vanishing' && plat.visible === false) return;
+
     const colors: Record<string, string> = {
       normal: '#4a5568',
       breakable: '#a0522d',
       moving: '#4682b4',
       boost: '#ff6600',
       reward: '#ff2255',
+      lavaControl: '#00aacc',
+      teleport: '#aa44ff',
+      invincible: '#ffcc00',
+      vanishing: '#8899aa',
     };
 
     const glowColors: Record<string, string> = {
@@ -954,6 +961,10 @@ export class GameEngine {
       moving: 'rgba(70, 130, 180, 0.4)',
       boost: 'rgba(255, 102, 0, 0.5)',
       reward: 'rgba(255, 34, 85, 0.6)',
+      lavaControl: 'rgba(0, 170, 204, 0.5)',
+      teleport: 'rgba(170, 68, 255, 0.6)',
+      invincible: 'rgba(255, 204, 0, 0.6)',
+      vanishing: 'rgba(136, 153, 170, 0.4)',
     };
 
     ctx.shadowColor = glowColors[plat.type] || glowColors.normal;
