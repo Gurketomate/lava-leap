@@ -497,6 +497,9 @@ export class GameEngine {
     if (p.vy > 0) {
       for (const plat of this.platforms) {
         if (plat.broken) continue;
+        // Skip vanishing platforms that are invisible
+        if (plat.type === 'vanishing' && plat.visible === false) continue;
+
         const platLeft = plat.x - PLATFORM_HITBOX_PADDING;
         const platRight = plat.x + plat.width + PLATFORM_HITBOX_PADDING;
 
@@ -511,12 +514,42 @@ export class GameEngine {
           if (plat.type === 'boost') {
             p.vy = -BOOST_FORCE * (1 + this.jumpBonus);
             this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ff6600', 8);
-            playJump(1.0); // max pitch for boost
+            playJump(1.0);
           } else if (plat.type === 'breakable' || plat.type === 'reward') {
             p.vy = -jumpForce;
             plat.broken = true;
             this.spawnParticles(plat.x + plat.width / 2, plat.y, plat.type === 'reward' ? '#ffd700' : '#888888', 8);
             playJump(0.5);
+          } else if (plat.type === 'lavaControl') {
+            // Push lava down 100-180px
+            p.vy = -jumpForce;
+            const push = 100 + Math.random() * 80;
+            this.lavaY += push;
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#00ccff', 10);
+            plat.broken = true; // single use
+            playJump(0.7);
+          } else if (plat.type === 'teleport') {
+            // Teleport player upward 150-250px
+            const teleportDist = 150 + Math.random() * 100;
+            p.y -= teleportDist;
+            p.vy = -jumpForce * 0.5;
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#aa00ff', 12);
+            this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#aa00ff', 12);
+            plat.broken = true;
+            playJump(0.9);
+          } else if (plat.type === 'invincible') {
+            // Grant 3s invincibility
+            p.vy = -jumpForce;
+            this.isInvincible = true;
+            this.invincibleTimer = 3.0;
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ffdd00', 12);
+            plat.broken = true;
+            playPowerUp();
+          } else if (plat.type === 'vanishing') {
+            p.vy = -jumpForce;
+            // Start vanish countdown on landing
+            plat.vanishTimer = plat.vanishDuration || 2.5;
+            playJump(0.3);
           } else {
             p.vy = -jumpForce;
             playJump(0.4);
