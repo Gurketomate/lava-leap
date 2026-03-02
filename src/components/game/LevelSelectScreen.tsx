@@ -19,9 +19,6 @@ const LevelSelectScreen = ({ onSelectLevel, onBack }: LevelSelectScreenProps) =>
           <p className="text-sm text-muted-foreground font-body mt-1">
             {maxUnlockedLevel} von {LEVELS.length} freigeschaltet
           </p>
-          <p className="text-[10px] text-muted-foreground/60 font-body mt-2">
-            ⭐ = Werbung · ⭐⭐ = Ohne Werbung · ⭐⭐⭐ = Ohne Power-Ups
-          </p>
         </div>
 
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 w-full max-h-[60vh] overflow-y-auto pr-1">

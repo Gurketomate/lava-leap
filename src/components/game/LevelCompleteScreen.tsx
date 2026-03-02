@@ -26,9 +26,9 @@ const StarDisplay = ({ stars }: { stars: number }) => (
 
 const STAR_LABELS = [
   '',
-  'Mit Werbung geschafft',
-  'Ohne Werbung geschafft',
-  'Perfekt! Ohne Werbung & Power-Ups',
+  'Gut gemacht!',
+  'Stark gespielt!',
+  'Perfekter Run! 🔥',
 ];
 
 const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) => {
