@@ -732,7 +732,12 @@ export class GameEngine {
 
     // Game over checks
     if (p.y + p.height > this.lavaY) {
-      if (this.hasShield) {
+      if (this.isInvincible) {
+        // Invincible: bounce off lava
+        p.vy = -JUMP_FORCE;
+        p.y = this.lavaY - p.height - 5;
+        this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ffdd00', 10);
+      } else if (this.hasShield) {
         this.hasShield = false;
         p.vy = -JUMP_FORCE;
         this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00aaff', 12);
