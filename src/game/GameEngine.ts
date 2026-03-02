@@ -574,6 +574,23 @@ export class GameEngine {
           plat.moveDir = -(plat.moveDir || 1);
         }
       }
+      // Vanishing platforms countdown
+      if (plat.type === 'vanishing' && !plat.broken && plat.vanishTimer !== undefined && plat.vanishTimer > 0) {
+        plat.vanishTimer -= dt;
+        if (plat.vanishTimer <= 0) {
+          plat.visible = false;
+          plat.broken = true;
+          this.spawnParticles(plat.x + plat.width / 2, plat.y, 'rgba(200,200,255,0.8)', 6);
+        }
+      }
+    }
+
+    // Invincibility timer
+    if (this.isInvincible) {
+      this.invincibleTimer -= dt;
+      if (this.invincibleTimer <= 0) {
+        this.isInvincible = false;
+      }
     }
 
     // Camera follow
