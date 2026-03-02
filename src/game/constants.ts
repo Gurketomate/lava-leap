@@ -111,13 +111,17 @@ export const LEVELS: LevelDefinition[] = (() => {
     let platformWidthMod: number;
     let lavaSpeedMod: number;
     let lavaEndAccel: number;
+    let lavaControlChance: number;
+    let teleportChance: number;
+    let invincibleChance: number;
+    let vanishingChance: number;
 
     if (id <= 5) {
       // INTRO tier
       const lt = (id - 1) / 4;
       name = ['Einstieg', 'Erste Schritte', 'Aufstieg', 'Leichter Wind', 'Gipfelblick'][id - 1];
       targetHeight = Math.floor(lerp(250, 500, lt));
-      normalChance = lerp(0.88, 0.75, lt);
+      normalChance = lerp(0.88, 0.70, lt);
       breakableChance = lerp(0.01, 0.05, lt);
       movingChance = lerp(0.02, 0.10, lt);
       boostChance = lerp(0.09, 0.08, lt);
@@ -125,6 +129,10 @@ export const LEVELS: LevelDefinition[] = (() => {
       platformWidthMod = lerp(1.25, 1.10, lt);
       lavaSpeedMod = lerp(0.70, 0.90, lt);
       lavaEndAccel = lerp(1.1, 1.25, lt);
+      lavaControlChance = lerp(0.00, 0.03, lt);
+      teleportChance = 0;
+      invincibleChance = 0;
+      vanishingChance = 0;
     } else if (id <= 15) {
       // MID tier
       const lt = (id - 6) / 9;
@@ -132,14 +140,18 @@ export const LEVELS: LevelDefinition[] = (() => {
         'Ascheregen', 'Glutpfad', 'Felssturz', 'Hitzewelle', 'Magmakern'];
       name = midNames[id - 6];
       targetHeight = Math.floor(lerp(550, 1200, lt));
-      normalChance = lerp(0.70, 0.45, lt);
-      breakableChance = lerp(0.06, 0.18, lt);
-      movingChance = lerp(0.12, 0.25, lt);
+      normalChance = lerp(0.65, 0.38, lt);
+      breakableChance = lerp(0.06, 0.16, lt);
+      movingChance = lerp(0.12, 0.22, lt);
       boostChance = 0.08;
       rewardChance = lerp(0.04, 0.08, lt);
       platformWidthMod = lerp(1.05, 0.88, lt);
       lavaSpeedMod = lerp(0.95, 1.30, lt);
       lavaEndAccel = lerp(1.25, 1.50, lt);
+      lavaControlChance = lerp(0.03, 0.05, lt);
+      teleportChance = lerp(0.00, 0.03, lt);
+      invincibleChance = lerp(0.00, 0.02, lt);
+      vanishingChance = lerp(0.02, 0.06, lt);
     } else if (id <= 30) {
       // HARD tier
       const lt = (id - 16) / 14;
@@ -148,14 +160,18 @@ export const LEVELS: LevelDefinition[] = (() => {
         'Magmastrom', 'Vulkanherz', 'Inferno', 'Feuersturm', 'Höllenschlund'];
       name = hardNames[id - 16];
       targetHeight = Math.floor(lerp(1300, 2500, lt));
-      normalChance = lerp(0.40, 0.22, lt);
-      breakableChance = lerp(0.20, 0.28, lt);
-      movingChance = lerp(0.25, 0.32, lt);
+      normalChance = lerp(0.33, 0.15, lt);
+      breakableChance = lerp(0.18, 0.22, lt);
+      movingChance = lerp(0.22, 0.28, lt);
       boostChance = lerp(0.08, 0.10, lt);
-      rewardChance = lerp(0.07, 0.12, lt);
+      rewardChance = lerp(0.07, 0.10, lt);
       platformWidthMod = lerp(0.85, 0.75, lt);
       lavaSpeedMod = lerp(1.30, 1.70, lt);
       lavaEndAccel = lerp(1.50, 1.80, lt);
+      lavaControlChance = lerp(0.04, 0.05, lt);
+      teleportChance = lerp(0.03, 0.04, lt);
+      invincibleChance = lerp(0.02, 0.03, lt);
+      vanishingChance = lerp(0.06, 0.10, lt);
     } else {
       // ELITE tier (31-50)
       const lt = (id - 31) / 19;
@@ -165,14 +181,18 @@ export const LEVELS: LevelDefinition[] = (() => {
         'Aschegeist', 'Vulkanzorn', 'Feuerseele', 'Glutkrone', 'Eruption'];
       name = eliteNames[id - 31];
       targetHeight = Math.floor(lerp(2600, 5000, lt));
-      normalChance = lerp(0.20, 0.10, lt);
-      breakableChance = lerp(0.28, 0.32, lt);
-      movingChance = lerp(0.32, 0.38, lt);
+      normalChance = lerp(0.12, 0.05, lt);
+      breakableChance = lerp(0.20, 0.22, lt);
+      movingChance = lerp(0.28, 0.30, lt);
       boostChance = lerp(0.10, 0.08, lt);
-      rewardChance = lerp(0.12, 0.14, lt);
+      rewardChance = lerp(0.10, 0.12, lt);
       platformWidthMod = lerp(0.75, 0.65, lt);
       lavaSpeedMod = lerp(1.70, 2.20, lt);
       lavaEndAccel = lerp(1.80, 2.50, lt);
+      lavaControlChance = lerp(0.05, 0.06, lt);
+      teleportChance = lerp(0.04, 0.05, lt);
+      invincibleChance = lerp(0.03, 0.04, lt);
+      vanishingChance = lerp(0.10, 0.12, lt);
     }
 
     // Mini-peak every 5th level
@@ -187,6 +207,7 @@ export const LEVELS: LevelDefinition[] = (() => {
       id, name, targetHeight,
       normalChance, breakableChance, movingChance, boostChance, rewardChance,
       platformWidthMod, lavaSpeedMod, lavaEndAccel,
+      lavaControlChance, teleportChance, invincibleChance, vanishingChance,
     });
   }
 

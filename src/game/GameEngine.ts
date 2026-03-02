@@ -45,6 +45,11 @@ export class GameEngine {
   animId = 0;
   backgroundLayers: { offset: number; speed: number; shapes: { x: number; y: number; r: number }[] }[] = [];
 
+  // New platform effect timers
+  invincibleTimer = 0;
+  isInvincible = false;
+  lavaControlPush = 0; // accumulated lava push-down
+
   // Level system
   currentLevelDef: LevelDefinition | null = null;
   levelComplete = false;
@@ -163,9 +168,11 @@ export class GameEngine {
     // In no-safe-zone, only hard platforms
     if (this.inNoSafeZone) {
       const r = Math.random();
-      if (r < 0.35) return 'moving';
-      if (r < 0.65) return 'breakable';
-      if (r < 0.75) return 'reward';
+      if (r < 0.25) return 'moving';
+      if (r < 0.45) return 'breakable';
+      if (r < 0.55) return 'vanishing';
+      if (r < 0.65) return 'reward';
+      if (r < 0.75) return 'lavaControl';
       return 'boost';
     }
 
@@ -178,6 +185,18 @@ export class GameEngine {
 
     cumulative += level.rewardChance;
     if (r < cumulative) return 'reward';
+
+    cumulative += level.lavaControlChance;
+    if (r < cumulative) return 'lavaControl';
+
+    cumulative += level.teleportChance;
+    if (r < cumulative) return 'teleport';
+
+    cumulative += level.invincibleChance;
+    if (r < cumulative) return 'invincible';
+
+    cumulative += level.vanishingChance;
+    if (r < cumulative) return 'vanishing';
 
     cumulative += level.movingChance;
     if (r < cumulative) return 'moving';
@@ -223,6 +242,9 @@ export class GameEngine {
     this.lavaSurgeDuration = 0;
     this.screenShake = 0;
     this.doubleJumpFlashTimer = 0;
+    this.invincibleTimer = 0;
+    this.isInvincible = false;
+    this.lavaControlPush = 0;
     this.levelComplete = false;
     this.levelCompleteTimer = 0;
 
@@ -331,6 +353,12 @@ export class GameEngine {
         platform.moveRange = 50 + Math.random() * 80;
         platform.moveDir = Math.random() > 0.5 ? 1 : -1;
         platform.originX = newX;
+      }
+
+      if (type === 'vanishing') {
+        platform.vanishTimer = 0;
+        platform.vanishDuration = 2.0 + Math.random() * 1.5; // 2-3.5s visible
+        platform.visible = true;
       }
 
       // For reward platforms: make them genuinely harder + spawn a safe alternative
@@ -469,6 +497,9 @@ export class GameEngine {
     if (p.vy > 0) {
       for (const plat of this.platforms) {
         if (plat.broken) continue;
+        // Skip vanishing platforms that are invisible
+        if (plat.type === 'vanishing' && plat.visible === false) continue;
+
         const platLeft = plat.x - PLATFORM_HITBOX_PADDING;
         const platRight = plat.x + plat.width + PLATFORM_HITBOX_PADDING;
 
@@ -483,12 +514,42 @@ export class GameEngine {
           if (plat.type === 'boost') {
             p.vy = -BOOST_FORCE * (1 + this.jumpBonus);
             this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ff6600', 8);
-            playJump(1.0); // max pitch for boost
+            playJump(1.0);
           } else if (plat.type === 'breakable' || plat.type === 'reward') {
             p.vy = -jumpForce;
             plat.broken = true;
             this.spawnParticles(plat.x + plat.width / 2, plat.y, plat.type === 'reward' ? '#ffd700' : '#888888', 8);
             playJump(0.5);
+          } else if (plat.type === 'lavaControl') {
+            // Push lava down 100-180px
+            p.vy = -jumpForce;
+            const push = 100 + Math.random() * 80;
+            this.lavaY += push;
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#00ccff', 10);
+            plat.broken = true; // single use
+            playJump(0.7);
+          } else if (plat.type === 'teleport') {
+            // Teleport player upward 150-250px
+            const teleportDist = 150 + Math.random() * 100;
+            p.y -= teleportDist;
+            p.vy = -jumpForce * 0.5;
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#aa00ff', 12);
+            this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#aa00ff', 12);
+            plat.broken = true;
+            playJump(0.9);
+          } else if (plat.type === 'invincible') {
+            // Grant 3s invincibility
+            p.vy = -jumpForce;
+            this.isInvincible = true;
+            this.invincibleTimer = 3.0;
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ffdd00', 12);
+            plat.broken = true;
+            playPowerUp();
+          } else if (plat.type === 'vanishing') {
+            p.vy = -jumpForce;
+            // Start vanish countdown on landing
+            plat.vanishTimer = plat.vanishDuration || 2.5;
+            playJump(0.3);
           } else {
             p.vy = -jumpForce;
             playJump(0.4);
@@ -512,6 +573,23 @@ export class GameEngine {
         if (plat.x > plat.originX + (plat.moveRange || 80) || plat.x < plat.originX - (plat.moveRange || 80)) {
           plat.moveDir = -(plat.moveDir || 1);
         }
+      }
+      // Vanishing platforms countdown
+      if (plat.type === 'vanishing' && !plat.broken && plat.vanishTimer !== undefined && plat.vanishTimer > 0) {
+        plat.vanishTimer -= dt;
+        if (plat.vanishTimer <= 0) {
+          plat.visible = false;
+          plat.broken = true;
+          this.spawnParticles(plat.x + plat.width / 2, plat.y, 'rgba(200,200,255,0.8)', 6);
+        }
+      }
+    }
+
+    // Invincibility timer
+    if (this.isInvincible) {
+      this.invincibleTimer -= dt;
+      if (this.invincibleTimer <= 0) {
+        this.isInvincible = false;
       }
     }
 
@@ -654,7 +732,12 @@ export class GameEngine {
 
     // Game over checks
     if (p.y + p.height > this.lavaY) {
-      if (this.hasShield) {
+      if (this.isInvincible) {
+        // Invincible: bounce off lava
+        p.vy = -JUMP_FORCE;
+        p.y = this.lavaY - p.height - 5;
+        this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ffdd00', 10);
+      } else if (this.hasShield) {
         this.hasShield = false;
         p.vy = -JUMP_FORCE;
         this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00aaff', 12);
@@ -760,6 +843,21 @@ export class GameEngine {
       ctx.stroke();
     }
 
+    // Invincibility aura
+    if (this.isInvincible) {
+      const pulse = Math.sin(performance.now() / 100) * 0.3 + 0.7;
+      ctx.strokeStyle = `rgba(255, 220, 0, ${pulse * 0.7})`;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#ffdd00';
+      ctx.shadowBlur = 15;
+      const px = this.player.x + this.player.width / 2;
+      const py = this.player.y + this.player.height / 2 - this.cameraY;
+      ctx.beginPath();
+      ctx.arc(px, py, 30, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
     // Lava edge glow overlay
     const distToLava = this.lavaY - (this.player.y + this.player.height);
     const prox = 1 - Math.min(1, Math.max(0, distToLava / 400));
@@ -857,12 +955,19 @@ export class GameEngine {
   }
 
   renderPlatform(ctx: CanvasRenderingContext2D, plat: Platform) {
+    // Skip invisible vanishing platforms
+    if (plat.type === 'vanishing' && plat.visible === false) return;
+
     const colors: Record<string, string> = {
       normal: '#4a5568',
       breakable: '#a0522d',
       moving: '#4682b4',
       boost: '#ff6600',
       reward: '#ff2255',
+      lavaControl: '#00aacc',
+      teleport: '#aa44ff',
+      invincible: '#ffcc00',
+      vanishing: '#8899aa',
     };
 
     const glowColors: Record<string, string> = {
@@ -871,6 +976,10 @@ export class GameEngine {
       moving: 'rgba(70, 130, 180, 0.4)',
       boost: 'rgba(255, 102, 0, 0.5)',
       reward: 'rgba(255, 34, 85, 0.6)',
+      lavaControl: 'rgba(0, 170, 204, 0.5)',
+      teleport: 'rgba(170, 68, 255, 0.6)',
+      invincible: 'rgba(255, 204, 0, 0.6)',
+      vanishing: 'rgba(136, 153, 170, 0.4)',
     };
 
     ctx.shadowColor = glowColors[plat.type] || glowColors.normal;
@@ -909,6 +1018,43 @@ export class GameEngine {
       const pulse = Math.sin(performance.now() / 200) * 0.3 + 0.7;
       ctx.fillStyle = `rgba(255, 215, 0, ${pulse * 0.4})`;
       ctx.fillText('💰', plat.x + plat.width / 2, plat.y + 11);
+    }
+
+    if (plat.type === 'lavaControl') {
+      ctx.fillStyle = '#fff';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('❄', plat.x + plat.width / 2, plat.y + 11);
+    }
+
+    if (plat.type === 'teleport') {
+      const pulse = Math.sin(performance.now() / 150) * 0.3 + 0.7;
+      ctx.fillStyle = `rgba(200, 150, 255, ${pulse})`;
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚡', plat.x + plat.width / 2, plat.y + 11);
+    }
+
+    if (plat.type === 'invincible') {
+      const pulse = Math.sin(performance.now() / 180) * 0.3 + 0.7;
+      ctx.fillStyle = `rgba(255, 220, 0, ${pulse})`;
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('⭐', plat.x + plat.width / 2, plat.y + 11);
+    }
+
+    if (plat.type === 'vanishing') {
+      // Flickering effect when about to vanish
+      const timer = plat.vanishTimer ?? 0;
+      if (timer > 0 && timer < 1.0) {
+        const flicker = Math.sin(performance.now() / 80) * 0.5 + 0.5;
+        ctx.globalAlpha = 0.3 + flicker * 0.7;
+      }
+      ctx.fillStyle = 'rgba(200,200,255,0.6)';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('◌', plat.x + plat.width / 2, plat.y + 11);
+      ctx.globalAlpha = 1;
     }
   }
 
