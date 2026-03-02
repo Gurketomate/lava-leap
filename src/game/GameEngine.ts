@@ -45,6 +45,11 @@ export class GameEngine {
   animId = 0;
   backgroundLayers: { offset: number; speed: number; shapes: { x: number; y: number; r: number }[] }[] = [];
 
+  // New platform effect timers
+  invincibleTimer = 0;
+  isInvincible = false;
+  lavaControlPush = 0; // accumulated lava push-down
+
   // Level system
   currentLevelDef: LevelDefinition | null = null;
   levelComplete = false;
