@@ -86,6 +86,10 @@ export interface LevelDefinition {
   platformWidthMod: number;
   lavaSpeedMod: number;
   lavaEndAccel: number; // lava acceleration multiplier in last 20% of level
+  lavaControlChance: number;
+  teleportChance: number;
+  invincibleChance: number;
+  vanishingChance: number;
 }
 
 export interface GameState {
