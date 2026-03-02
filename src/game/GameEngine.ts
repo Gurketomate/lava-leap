@@ -355,6 +355,12 @@ export class GameEngine {
         platform.originX = newX;
       }
 
+      if (type === 'vanishing') {
+        platform.vanishTimer = 0;
+        platform.vanishDuration = 2.0 + Math.random() * 1.5; // 2-3.5s visible
+        platform.visible = true;
+      }
+
       // For reward platforms: make them genuinely harder + spawn a safe alternative
       if (type === 'reward') {
         // Narrow the risk platform significantly
