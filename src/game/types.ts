@@ -25,6 +25,9 @@ export interface Platform {
   moveSpeed?: number;
   moveRange?: number;
   originX?: number;
+  vanishTimer?: number;
+  vanishDuration?: number;
+  visible?: boolean;
 }
 
 export interface Coin {
