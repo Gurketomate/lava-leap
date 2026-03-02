@@ -1004,6 +1004,43 @@ export class GameEngine {
       ctx.fillStyle = `rgba(255, 215, 0, ${pulse * 0.4})`;
       ctx.fillText('💰', plat.x + plat.width / 2, plat.y + 11);
     }
+
+    if (plat.type === 'lavaControl') {
+      ctx.fillStyle = '#fff';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('❄', plat.x + plat.width / 2, plat.y + 11);
+    }
+
+    if (plat.type === 'teleport') {
+      const pulse = Math.sin(performance.now() / 150) * 0.3 + 0.7;
+      ctx.fillStyle = `rgba(200, 150, 255, ${pulse})`;
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚡', plat.x + plat.width / 2, plat.y + 11);
+    }
+
+    if (plat.type === 'invincible') {
+      const pulse = Math.sin(performance.now() / 180) * 0.3 + 0.7;
+      ctx.fillStyle = `rgba(255, 220, 0, ${pulse})`;
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('⭐', plat.x + plat.width / 2, plat.y + 11);
+    }
+
+    if (plat.type === 'vanishing') {
+      // Flickering effect when about to vanish
+      const timer = plat.vanishTimer ?? 0;
+      if (timer > 0 && timer < 1.0) {
+        const flicker = Math.sin(performance.now() / 80) * 0.5 + 0.5;
+        ctx.globalAlpha = 0.3 + flicker * 0.7;
+      }
+      ctx.fillStyle = 'rgba(200,200,255,0.6)';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('◌', plat.x + plat.width / 2, plat.y + 11);
+      ctx.globalAlpha = 1;
+    }
   }
 
   renderCoin(ctx: CanvasRenderingContext2D, coin: Coin) {
