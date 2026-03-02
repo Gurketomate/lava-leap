@@ -529,10 +529,35 @@ export class GameEngine {
             plat.broken = true; // single use
             playJump(0.7);
           } else if (plat.type === 'teleport') {
-            // Teleport player upward 150-250px
+            // Teleport player upward and ensure a landing platform exists
             const teleportDist = 150 + Math.random() * 100;
-            p.y -= teleportDist;
-            p.vy = -jumpForce * 0.5;
+            const targetY = p.y - teleportDist;
+            
+            // Check if any reachable platform exists near the destination
+            const hasNearbyPlatform = this.platforms.some(
+              (other) => !other.broken && other !== plat &&
+                Math.abs(other.y - targetY) < 80 &&
+                Math.abs(other.x - p.x) < 200
+            );
+            
+            // If no platform nearby, spawn one at the destination
+            if (!hasNearbyPlatform) {
+              const canvasW = this.canvas.width;
+              const platWidth = 70 + Math.random() * 30;
+              const spawnX = Math.max(10, Math.min(canvasW - platWidth - 10, p.x - platWidth / 2 + (Math.random() - 0.5) * 80));
+              this.platforms.push({
+                x: spawnX,
+                y: targetY + 20,
+                width: platWidth,
+                height: 12,
+                type: 'normal',
+                broken: false,
+                visible: true,
+              });
+            }
+            
+            p.y = targetY;
+            p.vy = -jumpForce;
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#aa00ff', 12);
             this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#aa00ff', 12);
             plat.broken = true;
