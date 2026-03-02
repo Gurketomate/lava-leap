@@ -111,6 +111,10 @@ export const LEVELS: LevelDefinition[] = (() => {
     let platformWidthMod: number;
     let lavaSpeedMod: number;
     let lavaEndAccel: number;
+    let lavaControlChance: number;
+    let teleportChance: number;
+    let invincibleChance: number;
+    let vanishingChance: number;
 
     if (id <= 5) {
       // INTRO tier
