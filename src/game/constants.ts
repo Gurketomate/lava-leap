@@ -207,6 +207,7 @@ export const LEVELS: LevelDefinition[] = (() => {
       id, name, targetHeight,
       normalChance, breakableChance, movingChance, boostChance, rewardChance,
       platformWidthMod, lavaSpeedMod, lavaEndAccel,
+      lavaControlChance, teleportChance, invincibleChance, vanishingChance,
     });
   }
 
