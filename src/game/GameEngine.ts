@@ -661,11 +661,7 @@ export class GameEngine {
           }
 
           p.y = plat.y - p.height;
-          p.doubleJumpUsed = false;
-          this.wasOnGround = true;
-          this.coyoteTimer = 0;
-
-          if (this.jumpRequested) { this.jumpRequested = false; this.jumpBufferTimer = 0; }
+          // Jump state already reset by performJump()
           break;
         }
       }
