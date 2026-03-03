@@ -104,6 +104,11 @@ export class GameEngine {
   reviveInputLockTimer = 0;  // input lock countdown
   reviveLavaPauseTimer = 0;  // lava pause countdown
 
+  // Shield rebound grace state
+  shieldGraceTimer = 0;      // 0.5s invulnerability after shield break
+  shieldInputLockTimer = 0;  // 0.2s input lock after rebound
+  shieldLavaPauseTimer = 0;  // 0.3s lava pause after shield break
+
   // Callbacks
   onScoreUpdate: Callback = () => {};
   onCoinCollect: Callback = () => {};
@@ -527,6 +532,15 @@ export class GameEngine {
     }
     if (this.reviveLavaPauseTimer > 0) this.reviveLavaPauseTimer -= dt;
 
+    // Shield rebound grace timers
+    if (this.shieldGraceTimer > 0) this.shieldGraceTimer -= dt;
+    if (this.shieldInputLockTimer > 0) {
+      this.shieldInputLockTimer -= dt;
+      this.jumpRequested = false;
+      this.jumpBufferTimer = 0;
+    }
+    if (this.shieldLavaPauseTimer > 0) this.shieldLavaPauseTimer -= dt;
+
     // No-safe-zone timer
     if (!this.inNoSafeZone) {
       this.noSafeZoneTimer -= dt;
@@ -759,8 +773,8 @@ export class GameEngine {
     adaptiveSpeed = Math.max(LAVA_MIN_SPEED * lavaSlowMult, Math.min(LAVA_ADAPTIVE_MAX_SPEED, adaptiveSpeed));
 
     this.lavaSpeed = adaptiveSpeed;
-    // Pause lava during revive grace
-    if (this.reviveLavaPauseTimer <= 0) {
+    // Pause lava during revive or shield grace
+    if (this.reviveLavaPauseTimer <= 0 && this.shieldLavaPauseTimer <= 0) {
       this.lavaY -= adaptiveSpeed * dt;
     }
 
@@ -847,10 +861,32 @@ export class GameEngine {
         p.vy = -JUMP_FORCE;
         p.y = this.lavaY - p.height - 5;
         this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ffdd00', 10);
+      } else if (this.shieldGraceTimer > 0) {
+        // Invulnerable after shield break — bounce off
+        p.vy = -JUMP_FORCE * 0.5;
+        p.y = this.lavaY - p.height - 5;
       } else if (this.hasShield) {
+        // Strong controlled rebound
         this.hasShield = false;
-        p.vy = -JUMP_FORCE;
-        this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00aaff', 12);
+        p.vx = 0;
+        p.vy = 0;
+        p.y = this.lavaY - p.height - 5;
+        p.vy = -JUMP_FORCE * 1.4 * (1 + this.jumpBonus);
+        p.jumpsRemaining = 1;
+        p.doubleJumpUsed = false;
+        this.jumpRequested = false;
+        this.jumpBufferTimer = 0;
+
+        // Grace timers
+        this.shieldGraceTimer = 0.5;
+        this.shieldInputLockTimer = 0.2;
+        this.shieldLavaPauseTimer = 0.3;
+
+        // Visual & audio feedback
+        this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00aaff', 18);
+        this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ffffff', 8);
+        this.screenShake = 0.4;
+        playPowerUp();
       } else {
         this.running = false;
         deathCause('lava');
@@ -863,9 +899,18 @@ export class GameEngine {
       }
     }
     if (p.y > this.cameraY + this.height + 100) {
-      if (this.hasShield) {
+      if (this.shieldGraceTimer > 0) {
+        p.vy = -JUMP_FORCE * 0.5;
+        p.y = this.cameraY + this.height;
+      } else if (this.hasShield) {
         this.hasShield = false;
-        p.vy = -JUMP_FORCE;
+        p.vx = 0;
+        p.vy = -JUMP_FORCE * 1.4 * (1 + this.jumpBonus);
+        this.shieldGraceTimer = 0.5;
+        this.shieldInputLockTimer = 0.2;
+        this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00aaff', 18);
+        this.screenShake = 0.4;
+        playPowerUp();
       } else {
         this.running = false;
         deathCause('fall');
