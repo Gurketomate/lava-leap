@@ -601,74 +601,62 @@ export class GameEngine {
           p.y + p.height >= plat.y &&
           p.y + p.height <= plat.y + plat.height + p.vy * dt + 5
         ) {
-          const jumpForce = JUMP_FORCE * (1 + this.jumpBonus);
-
           if (plat.type === 'boost') {
-            p.vy = -BOOST_FORCE * (1 + this.jumpBonus);
+            this.performJump('boost', BOOST_FORCE / JUMP_FORCE);
             this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ff6600', 8);
             playJump(1.0);
           } else if (plat.type === 'breakable' || plat.type === 'reward') {
-            p.vy = -jumpForce;
+            this.performJump('normal', 1.0);
             plat.broken = true;
             this.spawnParticles(plat.x + plat.width / 2, plat.y, plat.type === 'reward' ? '#ffd700' : '#888888', 8);
             playJump(0.5);
           } else if (plat.type === 'lavaControl') {
-            // Push lava down 100-180px
-            p.vy = -jumpForce;
+            this.performJump('normal', 1.0);
             const push = 100 + Math.random() * 80;
             this.lavaY += push;
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#00ccff', 10);
-            plat.broken = true; // single use
+            plat.broken = true;
             playJump(0.7);
           } else if (plat.type === 'teleport') {
-            // Teleport player upward and ensure a landing platform exists
+            // Purple lightning platform — 1.6x force
             const teleportDist = 150 + Math.random() * 100;
             const targetY = p.y - teleportDist;
-            
-            // Check if any reachable platform exists near the destination
+
             const hasNearbyPlatform = this.platforms.some(
               (other) => !other.broken && other !== plat &&
                 Math.abs(other.y - targetY) < 80 &&
                 Math.abs(other.x - p.x) < 200
             );
-            
-            // If no platform nearby, spawn one at the destination
+
             if (!hasNearbyPlatform) {
-              const canvasW = this.canvas.width;
               const platWidth = 70 + Math.random() * 30;
-              const spawnX = Math.max(10, Math.min(canvasW - platWidth - 10, p.x - platWidth / 2 + (Math.random() - 0.5) * 80));
+              const spawnX = Math.max(10, Math.min(this.width - platWidth - 10, p.x - platWidth / 2 + (Math.random() - 0.5) * 80));
               this.platforms.push({
-                x: spawnX,
-                y: targetY + 20,
-                width: platWidth,
-                height: 12,
-                type: 'normal',
-                broken: false,
-                visible: true,
+                x: spawnX, y: targetY + 20, width: platWidth, height: 12,
+                type: 'normal', broken: false, visible: true,
               });
             }
-            
+
             p.y = targetY;
-            p.vy = -jumpForce;
+            this.performJump('lightning', 1.6);
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#aa00ff', 12);
             this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#aa00ff', 12);
+            this.screenShake = 0.15;
             plat.broken = true;
             playJump(0.9);
           } else if (plat.type === 'invincible') {
-            // Grant 3s invincibility
-            p.vy = -jumpForce;
+            this.performJump('normal', 1.0);
             this.isInvincible = true;
             this.invincibleTimer = 3.0;
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ffdd00', 12);
             plat.broken = true;
             playPowerUp();
           } else if (plat.type === 'vanishing') {
-            p.vy = -jumpForce;
-            // Start vanish countdown on landing
+            this.performJump('normal', 1.0);
             plat.vanishTimer = plat.vanishDuration || 2.5;
             playJump(0.3);
           } else {
-            p.vy = -jumpForce;
+            this.performJump('normal', 1.0);
             playJump(0.4);
           }
 
