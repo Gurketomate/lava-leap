@@ -48,11 +48,15 @@ export class GameEngine {
   // New platform effect timers
   invincibleTimer = 0;
   isInvincible = false;
-  lavaControlPush = 0; // accumulated lava push-down
   
-  // Danger platform lava boost
-  dangerLavaBoostTimer = 0;
-  dangerLavaBoostMult = 1.0;
+  // Smooth lava height modification (for ice platforms)
+  lavaHeightTarget = 0; // target delta to apply smoothly
+  lavaHeightSmooth = 0; // current smooth delta being applied
+  lavaHeightSmoothSpeed = 0; // units per second for smooth transition
+  
+  // Minimum lava Y — lava can never drop below initial position
+  lavaMinY = 0;
+  
   lastPlatformType: string = 'normal'; // track to prevent consecutive danger
 
   // Level system
