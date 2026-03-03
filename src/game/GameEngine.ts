@@ -759,7 +759,10 @@ export class GameEngine {
     adaptiveSpeed = Math.max(LAVA_MIN_SPEED * lavaSlowMult, Math.min(LAVA_ADAPTIVE_MAX_SPEED, adaptiveSpeed));
 
     this.lavaSpeed = adaptiveSpeed;
-    this.lavaY -= adaptiveSpeed * dt;
+    // Pause lava during revive grace
+    if (this.reviveLavaPauseTimer <= 0) {
+      this.lavaY -= adaptiveSpeed * dt;
+    }
 
     // Lava proximity (0 = far, 1 = touching)
     const proximity = 1 - Math.min(1, Math.max(0, currentDistance / (this.height * 0.5)));
