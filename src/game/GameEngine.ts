@@ -817,9 +817,6 @@ export class GameEngine {
       adaptiveSpeed *= LAVA_SURGE_MULTIPLIER;
     }
 
-    // Apply danger platform lava boost
-    adaptiveSpeed *= this.dangerLavaBoostMult;
-
     // Apply lava slow power-up
     adaptiveSpeed *= lavaSlowMult;
 
