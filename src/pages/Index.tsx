@@ -12,7 +12,7 @@ import { useGameStore } from '@/stores/gameStore';
 import { useAdStore } from '@/stores/adStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { GameEngine } from '@/game/GameEngine';
-import { LEVELS, JUMP_FORCE } from '@/game/constants';
+import { LEVELS } from '@/game/constants';
 import { upgradeChosen } from '@/game/analytics';
 import { startMusic, startLavaSound } from '@/game/SoundManager';
 import type { PowerUp } from '@/game/types';
