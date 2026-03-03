@@ -211,6 +211,9 @@ export class GameEngine {
       return 'danger';
     }
 
+    cumulative += level.invincibleChance;
+    if (r < cumulative) return 'invincible';
+
     cumulative += level.vanishingChance;
     if (r < cumulative) return 'vanishing';
 
