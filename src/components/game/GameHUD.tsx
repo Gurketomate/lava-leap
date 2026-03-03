@@ -53,6 +53,14 @@ const GameHUD = () => {
         </div>
       )}
 
+      {/* Double Jump Hint */}
+      {hasDoubleJump && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+          <div className="glass-panel px-4 py-1.5 text-xs text-muted-foreground font-body animate-pulse">
+            {isMobile ? '📱 Tap for Double Jump' : '⌨️ SPACE for Double Jump'}
+          </div>
+        </div>
+      )}
 
       {/* Heat Bar (Lava proximity) */}
       <div className="absolute bottom-0 left-0 w-full h-2">
