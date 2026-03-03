@@ -1398,10 +1398,43 @@ export class GameEngine {
     ctx.shadowBlur = 0;
   }
 
+  /**
+   * Unified jump controller — ALL jumps go through here.
+   * @param type - 'normal' | 'double' | 'boost' | 'lightning' | 'shieldRebound'
+   * @param forceMult - multiplier on JUMP_FORCE (default 1.0)
+   */
+  performJump(type: 'normal' | 'double' | 'boost' | 'lightning' | 'shieldRebound', forceMult = 1.0) {
+    const p = this.player;
+    const baseForce = JUMP_FORCE * (1 + this.jumpBonus);
+
+    // Always reset vy before applying force for consistency
+    p.vy = 0;
+    p.vy = -baseForce * forceMult;
+
+    // Reset jump state on any landing-based jump
+    if (type !== 'double') {
+      p.doubleJumpUsed = false;
+      this.wasOnGround = true;
+      this.coyoteTimer = 0;
+    }
+
+    if (this.jumpRequested) {
+      this.jumpRequested = false;
+      this.jumpBufferTimer = 0;
+    }
+
+    console.log(`[Jump] ${type.charAt(0).toUpperCase() + type.slice(1)} Jump (force: ${forceMult.toFixed(2)}x)`);
+  }
+
   doDoubleJump() {
-    if (this.hasDoubleJump && !this.player.doubleJumpUsed && this.player.vy > 0) {
-      this.player.vy = -JUMP_FORCE * 0.8 * (1 + this.jumpBonus);
+    // Shield rebound has highest priority — don't override it
+    if (this.shieldGraceTimer > 0) return;
+    // Input lock check
+    if (this.shieldInputLockTimer > 0 || this.reviveInputLockTimer > 0) return;
+
+    if (this.hasDoubleJump && !this.player.doubleJumpUsed) {
       this.player.doubleJumpUsed = true;
+      this.performJump('double', 1.2);
       this.doubleJumpFlashTimer = 0.3;
       this.spawnParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height, '#00ccff', 12);
       this.spawnParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height, '#ffffff', 6);
