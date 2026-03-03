@@ -1182,7 +1182,7 @@ export class GameEngine {
       boost: '#ff6600',
       reward: '#ff2255',
       lavaControl: '#00aacc',
-      teleport: '#aa44ff',
+      danger: '#cc2200',
       invincible: '#ffcc00',
       vanishing: '#8899aa',
     };
