@@ -99,6 +99,11 @@ export class GameEngine {
   // Double jump visual timer
   doubleJumpFlashTimer = 0;
 
+  // Revive grace state
+  reviveGraceTimer = 0;      // invulnerability countdown
+  reviveInputLockTimer = 0;  // input lock countdown
+  reviveLavaPauseTimer = 0;  // lava pause countdown
+
   // Callbacks
   onScoreUpdate: Callback = () => {};
   onCoinCollect: Callback = () => {};
