@@ -626,33 +626,16 @@ export class GameEngine {
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#00ccff', 10);
             plat.broken = true;
             playJump(0.7);
-          } else if (plat.type === 'teleport') {
-            // Purple lightning platform — 1.6x force
-            const teleportDist = 150 + Math.random() * 100;
-            const targetY = p.y - teleportDist;
-
-            const hasNearbyPlatform = this.platforms.some(
-              (other) => !other.broken && other !== plat &&
-                Math.abs(other.y - targetY) < 80 &&
-                Math.abs(other.x - p.x) < 200
-            );
-
-            if (!hasNearbyPlatform) {
-              const platWidth = 70 + Math.random() * 30;
-              const spawnX = Math.max(10, Math.min(this.width - platWidth - 10, p.x - platWidth / 2 + (Math.random() - 0.5) * 80));
-              this.platforms.push({
-                x: spawnX, y: targetY + 20, width: platWidth, height: 12,
-                type: 'normal', broken: false, visible: true,
-              });
-            }
-
-            p.y = targetY;
-            this.performJump('lightning', 1.6);
-            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#aa00ff', 12);
-            this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#aa00ff', 12);
-            this.screenShake = 0.15;
+          } else if (plat.type === 'danger') {
+            // Red danger platform — normal jump but lava speeds up 20% for 4s
+            this.performJump('normal', 1.0);
+            this.dangerLavaBoostTimer = 4.0;
+            this.dangerLavaBoostMult = 1.2;
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ff3333', 8);
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ff6600', 5);
+            this.screenShake = 0.1;
             plat.broken = true;
-            playJump(0.9);
+            playJump(0.6);
           } else if (plat.type === 'invincible') {
             this.performJump('normal', 1.0);
             this.isInvincible = true;
