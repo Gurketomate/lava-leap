@@ -519,6 +519,14 @@ export class GameEngine {
 
     this.elapsedTime += dt;
 
+    // Revive grace timers
+    if (this.reviveGraceTimer > 0) this.reviveGraceTimer -= dt;
+    if (this.reviveInputLockTimer > 0) {
+      this.reviveInputLockTimer -= dt;
+      this.inputDir = 0; // force no movement
+    }
+    if (this.reviveLavaPauseTimer > 0) this.reviveLavaPauseTimer -= dt;
+
     // No-safe-zone timer
     if (!this.inNoSafeZone) {
       this.noSafeZoneTimer -= dt;
