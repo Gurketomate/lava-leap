@@ -1395,10 +1395,10 @@ export class GameEngine {
 
   /**
    * Unified jump controller — ALL jumps go through here.
-   * @param type - 'normal' | 'double' | 'boost' | 'lightning' | 'shieldRebound'
+   * @param type - 'normal' | 'double' | 'boost' | 'shieldRebound'
    * @param forceMult - multiplier on JUMP_FORCE (default 1.0)
    */
-  performJump(type: 'normal' | 'double' | 'boost' | 'lightning' | 'shieldRebound', forceMult = 1.0) {
+  performJump(type: 'normal' | 'double' | 'boost' | 'shieldRebound', forceMult = 1.0) {
     const p = this.player;
     const baseForce = JUMP_FORCE * (1 + this.jumpBonus);
 
