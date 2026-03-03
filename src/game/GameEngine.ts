@@ -264,6 +264,9 @@ export class GameEngine {
     this.invincibleTimer = 0;
     this.isInvincible = false;
     this.lavaControlPush = 0;
+    this.dangerLavaBoostTimer = 0;
+    this.dangerLavaBoostMult = 1.0;
+    this.lastPlatformType = 'normal';
     this.levelComplete = false;
     this.levelCompleteTimer = 0;
 
