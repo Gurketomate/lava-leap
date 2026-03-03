@@ -548,16 +548,21 @@ export class GameEngine {
 
     this.elapsedTime += dt;
 
-    // Danger platform lava boost timer — smooth decay
-    if (this.dangerLavaBoostTimer > 0) {
-      this.dangerLavaBoostTimer -= dt;
-      if (this.dangerLavaBoostTimer <= 0) {
-        // Smooth return: don't snap, decay over 1s
-        this.dangerLavaBoostTimer = 0;
-        this.dangerLavaBoostMult = Math.max(1.0, this.dangerLavaBoostMult - dt * 0.2);
+    // Smooth lava height modification (ice platforms)
+    if (this.lavaHeightSmooth !== this.lavaHeightTarget) {
+      const diff = this.lavaHeightTarget - this.lavaHeightSmooth;
+      const step = this.lavaHeightSmoothSpeed * dt;
+      if (Math.abs(diff) <= step) {
+        const delta = this.lavaHeightTarget - this.lavaHeightSmooth;
+        this.lavaY += delta;
+        this.lavaHeightSmooth = this.lavaHeightTarget;
+      } else {
+        const delta = Math.sign(diff) * step;
+        this.lavaY += delta;
+        this.lavaHeightSmooth += delta;
       }
-    } else if (this.dangerLavaBoostMult > 1.0) {
-      this.dangerLavaBoostMult = Math.max(1.0, this.dangerLavaBoostMult - dt * 0.5);
+      // Clamp: lava can never go below initial spawn
+      this.lavaY = Math.min(this.lavaY, this.lavaMinY);
     }
 
     // Revive grace timers
