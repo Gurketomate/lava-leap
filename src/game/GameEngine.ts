@@ -924,19 +924,13 @@ export class GameEngine {
       this.invincibleTimer = 0;
     }
 
-    // Reset all velocity for controlled rebound
+    // Position above lava
     p.vx = 0;
-    p.vy = 0;
     p.y = Math.min(p.y, this.lavaY - p.height - 5);
 
-    // Strong upward force: 1.4x jump
-    p.vy = -JUMP_FORCE * 1.4 * (1 + this.jumpBonus);
-
-    // Reset jump state
-    p.jumpsRemaining = 1;
-    p.doubleJumpUsed = false;
-    this.jumpRequested = false;
-    this.jumpBufferTimer = 0;
+    // Use unified jump with shield rebound priority (1.4x)
+    this.performJump('shieldRebound', 1.4);
+    console.log('[Jump] Shield Rebound (1.40x)');
 
     // Grace timers — invulnerability, input lock, lava pause
     this.shieldGraceTimer = 0.5;
