@@ -204,11 +204,12 @@ export class GameEngine {
     cumulative += level.lavaControlChance;
     if (r < cumulative) return 'lavaControl';
 
-    cumulative += level.teleportChance;
-    if (r < cumulative) return 'teleport';
-
-    cumulative += level.invincibleChance;
-    if (r < cumulative) return 'invincible';
+    cumulative += level.dangerChance;
+    if (r < cumulative) {
+      // Never spawn 2 danger platforms consecutively
+      if (this.lastPlatformType === 'danger') return 'normal';
+      return 'danger';
+    }
 
     cumulative += level.vanishingChance;
     if (r < cumulative) return 'vanishing';
