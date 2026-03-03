@@ -652,20 +652,30 @@ export class GameEngine {
             this.spawnParticles(plat.x + plat.width / 2, plat.y, plat.type === 'reward' ? '#ffd700' : '#888888', 8);
             playJump(0.5);
           } else if (plat.type === 'lavaControl') {
+            // Blue ice platform — permanently lower lava smoothly over 0.4s
             this.performJump('normal', 1.0);
-            const push = 100 + Math.random() * 80;
-            this.lavaY += push;
+            const lavaDropUnits = PLATFORM_HEIGHT * 1.5 + 10; // ~31 units
+            this.lavaHeightTarget += lavaDropUnits; // positive = lava goes down
+            this.lavaHeightSmoothSpeed = lavaDropUnits / 0.4; // over 0.4s
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#00ccff', 10);
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#88ddff', 6);
+            this.screenShake = 0.15;
             plat.broken = true;
             playJump(0.7);
           } else if (plat.type === 'danger') {
-            // Red danger platform — normal jump but lava speeds up 20% for 4s
+            // Red danger platform — permanently raise lava
             this.performJump('normal', 1.0);
-            this.dangerLavaBoostTimer = 4.0;
-            this.dangerLavaBoostMult = 1.2;
-            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ff3333', 8);
-            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ff6600', 5);
-            this.screenShake = 0.1;
+            const lavaRiseUnits = PLATFORM_HEIGHT * 1.5 + 10; // ~31 units
+            // Directly raise lava (decrease lavaY) but not instant — smooth over 0.6s
+            this.lavaY -= lavaRiseUnits;
+            // Safety: ensure lava doesn't instantly kill (keep at least 2 platform gaps away)
+            const minSafeDist = PLATFORM_GAP_MIN * 2;
+            if (this.lavaY < p.y + p.height + minSafeDist) {
+              this.lavaY = p.y + p.height + minSafeDist;
+            }
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ff3333', 10);
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ff6600', 6);
+            this.screenShake = 0.3;
             plat.broken = true;
             playJump(0.6);
           } else if (plat.type === 'invincible') {
