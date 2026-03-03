@@ -48,11 +48,15 @@ export class GameEngine {
   // New platform effect timers
   invincibleTimer = 0;
   isInvincible = false;
-  lavaControlPush = 0; // accumulated lava push-down
   
-  // Danger platform lava boost
-  dangerLavaBoostTimer = 0;
-  dangerLavaBoostMult = 1.0;
+  // Smooth lava height modification (for ice platforms)
+  lavaHeightTarget = 0; // target delta to apply smoothly
+  lavaHeightSmooth = 0; // current smooth delta being applied
+  lavaHeightSmoothSpeed = 0; // units per second for smooth transition
+  
+  // Minimum lava Y — lava can never drop below initial position
+  lavaMinY = 0;
+  
   lastPlatformType: string = 'normal'; // track to prevent consecutive danger
 
   // Level system
@@ -263,9 +267,10 @@ export class GameEngine {
     this.doubleJumpFlashTimer = 0;
     this.invincibleTimer = 0;
     this.isInvincible = false;
-    this.lavaControlPush = 0;
-    this.dangerLavaBoostTimer = 0;
-    this.dangerLavaBoostMult = 1.0;
+    this.lavaHeightTarget = 0;
+    this.lavaHeightSmooth = 0;
+    this.lavaHeightSmoothSpeed = 0;
+    this.lavaMinY = this.height + 100; // initial lava position = minimum
     this.lastPlatformType = 'normal';
     this.levelComplete = false;
     this.levelCompleteTimer = 0;
@@ -543,16 +548,21 @@ export class GameEngine {
 
     this.elapsedTime += dt;
 
-    // Danger platform lava boost timer — smooth decay
-    if (this.dangerLavaBoostTimer > 0) {
-      this.dangerLavaBoostTimer -= dt;
-      if (this.dangerLavaBoostTimer <= 0) {
-        // Smooth return: don't snap, decay over 1s
-        this.dangerLavaBoostTimer = 0;
-        this.dangerLavaBoostMult = Math.max(1.0, this.dangerLavaBoostMult - dt * 0.2);
+    // Smooth lava height modification (ice platforms)
+    if (this.lavaHeightSmooth !== this.lavaHeightTarget) {
+      const diff = this.lavaHeightTarget - this.lavaHeightSmooth;
+      const step = this.lavaHeightSmoothSpeed * dt;
+      if (Math.abs(diff) <= step) {
+        const delta = this.lavaHeightTarget - this.lavaHeightSmooth;
+        this.lavaY += delta;
+        this.lavaHeightSmooth = this.lavaHeightTarget;
+      } else {
+        const delta = Math.sign(diff) * step;
+        this.lavaY += delta;
+        this.lavaHeightSmooth += delta;
       }
-    } else if (this.dangerLavaBoostMult > 1.0) {
-      this.dangerLavaBoostMult = Math.max(1.0, this.dangerLavaBoostMult - dt * 0.5);
+      // Clamp: lava can never go below initial spawn
+      this.lavaY = Math.min(this.lavaY, this.lavaMinY);
     }
 
     // Revive grace timers
@@ -642,20 +652,30 @@ export class GameEngine {
             this.spawnParticles(plat.x + plat.width / 2, plat.y, plat.type === 'reward' ? '#ffd700' : '#888888', 8);
             playJump(0.5);
           } else if (plat.type === 'lavaControl') {
+            // Blue ice platform — permanently lower lava smoothly over 0.4s
             this.performJump('normal', 1.0);
-            const push = 100 + Math.random() * 80;
-            this.lavaY += push;
+            const lavaDropUnits = PLATFORM_HEIGHT * 1.5 + 10; // ~31 units
+            this.lavaHeightTarget += lavaDropUnits; // positive = lava goes down
+            this.lavaHeightSmoothSpeed = lavaDropUnits / 0.4; // over 0.4s
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#00ccff', 10);
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#88ddff', 6);
+            this.screenShake = 0.15;
             plat.broken = true;
             playJump(0.7);
           } else if (plat.type === 'danger') {
-            // Red danger platform — normal jump but lava speeds up 20% for 4s
+            // Red danger platform — permanently raise lava
             this.performJump('normal', 1.0);
-            this.dangerLavaBoostTimer = 4.0;
-            this.dangerLavaBoostMult = 1.2;
-            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ff3333', 8);
-            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ff6600', 5);
-            this.screenShake = 0.1;
+            const lavaRiseUnits = PLATFORM_HEIGHT * 1.5 + 10; // ~31 units
+            // Directly raise lava (decrease lavaY) but not instant — smooth over 0.6s
+            this.lavaY -= lavaRiseUnits;
+            // Safety: ensure lava doesn't instantly kill (keep at least 2 platform gaps away)
+            const minSafeDist = PLATFORM_GAP_MIN * 2;
+            if (this.lavaY < p.y + p.height + minSafeDist) {
+              this.lavaY = p.y + p.height + minSafeDist;
+            }
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ff3333', 10);
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ff6600', 6);
+            this.screenShake = 0.3;
             plat.broken = true;
             playJump(0.6);
           } else if (plat.type === 'invincible') {
@@ -796,9 +816,6 @@ export class GameEngine {
     if (this.inLavaSurge) {
       adaptiveSpeed *= LAVA_SURGE_MULTIPLIER;
     }
-
-    // Apply danger platform lava boost
-    adaptiveSpeed *= this.dangerLavaBoostMult;
 
     // Apply lava slow power-up
     adaptiveSpeed *= lavaSlowMult;
@@ -1187,8 +1204,8 @@ export class GameEngine {
       breakable: '#a0522d',
       moving: '#4682b4',
       boost: '#ff6600',
-      reward: '#ff2255',
-      lavaControl: '#00aacc',
+      reward: '#9b59b6',
+      lavaControl: '#3498db',
       danger: '#cc2200',
       invincible: '#ffcc00',
       vanishing: '#8899aa',
@@ -1199,8 +1216,8 @@ export class GameEngine {
       breakable: 'rgba(160, 82, 45, 0.3)',
       moving: 'rgba(70, 130, 180, 0.4)',
       boost: 'rgba(255, 102, 0, 0.5)',
-      reward: 'rgba(255, 34, 85, 0.6)',
-      lavaControl: 'rgba(0, 170, 204, 0.5)',
+      reward: 'rgba(155, 89, 182, 0.6)',
+      lavaControl: 'rgba(52, 152, 219, 0.5)',
       danger: 'rgba(204, 34, 0, 0.6)',
       invincible: 'rgba(255, 204, 0, 0.6)',
       vanishing: 'rgba(136, 153, 170, 0.4)',
@@ -1240,8 +1257,10 @@ export class GameEngine {
 
     if (plat.type === 'reward') {
       const pulse = Math.sin(performance.now() / 200) * 0.3 + 0.7;
-      ctx.fillStyle = `rgba(255, 215, 0, ${pulse * 0.4})`;
-      ctx.fillText('💰', plat.x + plat.width / 2, plat.y + 11);
+      ctx.fillStyle = `rgba(200, 150, 255, ${pulse})`;
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('💎', plat.x + plat.width / 2, plat.y + 11);
     }
 
     if (plat.type === 'lavaControl') {
