@@ -861,10 +861,32 @@ export class GameEngine {
         p.vy = -JUMP_FORCE;
         p.y = this.lavaY - p.height - 5;
         this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ffdd00', 10);
+      } else if (this.shieldGraceTimer > 0) {
+        // Invulnerable after shield break — bounce off
+        p.vy = -JUMP_FORCE * 0.5;
+        p.y = this.lavaY - p.height - 5;
       } else if (this.hasShield) {
+        // Strong controlled rebound
         this.hasShield = false;
-        p.vy = -JUMP_FORCE;
-        this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00aaff', 12);
+        p.vx = 0;
+        p.vy = 0;
+        p.y = this.lavaY - p.height - 5;
+        p.vy = -JUMP_FORCE * 1.4 * (1 + this.jumpBonus);
+        p.jumpsRemaining = 1;
+        p.doubleJumpUsed = false;
+        this.jumpRequested = false;
+        this.jumpBufferTimer = 0;
+
+        // Grace timers
+        this.shieldGraceTimer = 0.5;
+        this.shieldInputLockTimer = 0.2;
+        this.shieldLavaPauseTimer = 0.3;
+
+        // Visual & audio feedback
+        this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00aaff', 18);
+        this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ffffff', 8);
+        this.screenShake = 0.4;
+        playPowerUp();
       } else {
         this.running = false;
         deathCause('lava');
