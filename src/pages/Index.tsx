@@ -14,7 +14,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { GameEngine } from '@/game/GameEngine';
 import { LEVELS } from '@/game/constants';
 import { upgradeChosen } from '@/game/analytics';
-import { startMusic, startLavaSound } from '@/game/SoundManager';
+import { startMusic } from '@/game/SoundManager';
 import type { PowerUp } from '@/game/types';
 
 const Index = () => {
