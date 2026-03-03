@@ -32,8 +32,7 @@ const GameCanvas = ({ onReady }: GameCanvasProps) => {
         return;
       }
       clientX = e.touches[0].clientX;
-
-      // Double tap detection for double jump
+      // Two-finger tap for double jump
       if (e.touches.length >= 2) {
         engineRef.current.doDoubleJump();
       }
