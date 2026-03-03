@@ -683,14 +683,44 @@ export class GameEngine {
       }
     }
 
-    // Moving platforms
+    // Moving platforms — bounded movement
     for (const plat of this.platforms) {
       if (plat.type === 'moving' && !plat.broken && plat.originX !== undefined) {
         plat.x += (plat.moveDir || 1) * (plat.moveSpeed || 60) * dt;
-        if (plat.x > plat.originX + (plat.moveRange || 80) || plat.x < plat.originX - (plat.moveRange || 80)) {
+        const range = plat.moveRange || 80;
+        // Reverse at range bounds
+        if (plat.x > plat.originX + range || plat.x < plat.originX - range) {
           plat.moveDir = -(plat.moveDir || 1);
+          plat.x = Math.max(plat.originX - range, Math.min(plat.originX + range, plat.x));
+        }
+        // Hard clamp to screen bounds — never leave play area
+        plat.x = Math.max(0, Math.min(this.width - plat.width, plat.x));
+      }
+
+      // Reward platforms that also move — same bounds
+      if (plat.type === 'reward' && !plat.broken && plat.originX !== undefined && plat.moveSpeed) {
+        plat.x += (plat.moveDir || 1) * (plat.moveSpeed || 60) * dt;
+        const range = plat.moveRange || 70;
+        if (plat.x > plat.originX + range || plat.x < plat.originX - range) {
+          plat.moveDir = -(plat.moveDir || 1);
+          plat.x = Math.max(plat.originX - range, Math.min(plat.originX + range, plat.x));
+        }
+        plat.x = Math.max(0, Math.min(this.width - plat.width, plat.x));
+      }
+
+      // Breakable platform respawn after 4 seconds
+      if ((plat.type === 'breakable') && plat.broken) {
+        if (plat.breakTimer === undefined) plat.breakTimer = 4.0;
+        plat.breakTimer -= dt;
+        if (plat.breakTimer <= 0) {
+          // Respawn at original position if still in valid range
+          if (plat.y > this.cameraY - 50 && plat.y < this.lavaY - 50) {
+            plat.broken = false;
+            plat.breakTimer = undefined;
+          }
         }
       }
+
       // Vanishing platforms countdown
       if (plat.type === 'vanishing' && !plat.broken && plat.vanishTimer !== undefined && plat.vanishTimer > 0) {
         plat.vanishTimer -= dt;
@@ -701,6 +731,9 @@ export class GameEngine {
         }
       }
     }
+
+    // === SAFETY CHECK: ensure at least one reachable platform exists ===
+    this.ensureReachablePlatform();
 
     // Invincibility timer
     if (this.isInvincible) {
