@@ -1257,8 +1257,10 @@ export class GameEngine {
 
     if (plat.type === 'reward') {
       const pulse = Math.sin(performance.now() / 200) * 0.3 + 0.7;
-      ctx.fillStyle = `rgba(255, 215, 0, ${pulse * 0.4})`;
-      ctx.fillText('💰', plat.x + plat.width / 2, plat.y + 11);
+      ctx.fillStyle = `rgba(200, 150, 255, ${pulse})`;
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('💎', plat.x + plat.width / 2, plat.y + 11);
     }
 
     if (plat.type === 'lavaControl') {
