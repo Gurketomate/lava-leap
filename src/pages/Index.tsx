@@ -12,9 +12,9 @@ import { useGameStore } from '@/stores/gameStore';
 import { useAdStore } from '@/stores/adStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { GameEngine } from '@/game/GameEngine';
-import { LEVELS, JUMP_FORCE } from '@/game/constants';
+import { LEVELS } from '@/game/constants';
 import { upgradeChosen } from '@/game/analytics';
-import { startMusic, startLavaSound } from '@/game/SoundManager';
+import { startMusic } from '@/game/SoundManager';
 import type { PowerUp } from '@/game/types';
 
 const Index = () => {
@@ -124,16 +124,9 @@ const Index = () => {
   const handleRevive = useCallback(() => {
     const engine = engineRef.current;
     if (!engine) return;
-    store.markUsedAd(); // Track for star rating
-    engine.player.vy = -JUMP_FORCE;
-    engine.lavaY = engine.lavaY + 200;
+    store.markUsedAd();
     store.setScreen('playing');
-    engine.running = true;
-    engine.paused = false;
-    engine.lastTime = performance.now();
-    startMusic();
-    startLavaSound();
-    engine.loop(performance.now());
+    engine.revive();
   }, [store]);
 
   const handleEngineReady = useCallback((engine: GameEngine) => {

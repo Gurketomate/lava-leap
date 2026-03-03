@@ -99,6 +99,11 @@ export class GameEngine {
   // Double jump visual timer
   doubleJumpFlashTimer = 0;
 
+  // Revive grace state
+  reviveGraceTimer = 0;      // invulnerability countdown
+  reviveInputLockTimer = 0;  // input lock countdown
+  reviveLavaPauseTimer = 0;  // lava pause countdown
+
   // Callbacks
   onScoreUpdate: Callback = () => {};
   onCoinCollect: Callback = () => {};
@@ -289,7 +294,72 @@ export class GameEngine {
     this.loop(this.lastTime);
   }
 
-  setInput(dir: number) { this.inputDir = dir; }
+  setInput(dir: number) {
+    // Block input during revive input lock
+    if (this.reviveInputLockTimer > 0) return;
+    this.inputDir = dir;
+  }
+
+  /** Revive: respawn on last safe platform with grace period */
+  revive() {
+    const p = this.player;
+
+    // Find the highest non-broken platform that is below or near the player
+    const safePlatforms = this.platforms
+      .filter(pl => !pl.broken && pl.type !== 'breakable' && pl.type !== 'vanishing'
+        && (pl.visible !== false) && pl.y > this.cameraY - 100)
+      .sort((a, b) => a.y - b.y); // sort by Y ascending (highest first)
+
+    const lastSafe = safePlatforms.length > 0 ? safePlatforms[0] : null;
+
+    if (lastSafe) {
+      p.x = lastSafe.x + lastSafe.width / 2 - p.width / 2;
+      p.y = lastSafe.y - p.height;
+    } else {
+      // Fallback: spawn a platform under player
+      const platW = 100;
+      const spawnY = p.y + 20;
+      const spawnX = Math.max(0, Math.min(this.width - platW, p.x));
+      this.platforms.push({
+        x: spawnX, y: spawnY, width: platW, height: PLATFORM_HEIGHT,
+        type: 'normal', broken: false,
+      });
+      p.x = spawnX + platW / 2 - p.width / 2;
+      p.y = spawnY - p.height;
+    }
+
+    // Reset physics
+    p.vx = 0;
+    p.vy = 0;
+    p.doubleJumpUsed = false;
+    this.inputDir = 0;
+    this.wasOnGround = true;
+    this.coyoteTimer = 0;
+    this.jumpRequested = false;
+    this.jumpBufferTimer = 0;
+
+    // Push lava down to safe distance
+    this.lavaY = Math.max(this.lavaY, p.y + this.height * 0.5);
+
+    // Set grace timers
+    this.reviveGraceTimer = 0.75;
+    this.reviveInputLockTimer = 0.3;
+    this.reviveLavaPauseTimer = 0.5;
+
+    // Stabilize camera immediately
+    this.cameraY = p.y - this.height * 0.35;
+
+    // Visual feedback
+    this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00ff88', 15);
+
+    // Resume engine
+    this.running = true;
+    this.paused = false;
+    this.lastTime = performance.now();
+    startMusic();
+    startLavaSound();
+    this.loop(this.lastTime);
+  }
 
   applyPowerUp(powerUp: PowerUp) {
     playPowerUp();
@@ -448,6 +518,14 @@ export class GameEngine {
     }
 
     this.elapsedTime += dt;
+
+    // Revive grace timers
+    if (this.reviveGraceTimer > 0) this.reviveGraceTimer -= dt;
+    if (this.reviveInputLockTimer > 0) {
+      this.reviveInputLockTimer -= dt;
+      this.inputDir = 0; // force no movement
+    }
+    if (this.reviveLavaPauseTimer > 0) this.reviveLavaPauseTimer -= dt;
 
     // No-safe-zone timer
     if (!this.inNoSafeZone) {
@@ -681,7 +759,10 @@ export class GameEngine {
     adaptiveSpeed = Math.max(LAVA_MIN_SPEED * lavaSlowMult, Math.min(LAVA_ADAPTIVE_MAX_SPEED, adaptiveSpeed));
 
     this.lavaSpeed = adaptiveSpeed;
-    this.lavaY -= adaptiveSpeed * dt;
+    // Pause lava during revive grace
+    if (this.reviveLavaPauseTimer <= 0) {
+      this.lavaY -= adaptiveSpeed * dt;
+    }
 
     // Lava proximity (0 = far, 1 = touching)
     const proximity = 1 - Math.min(1, Math.max(0, currentDistance / (this.height * 0.5)));
@@ -757,7 +838,11 @@ export class GameEngine {
 
     // Game over checks
     if (p.y + p.height > this.lavaY) {
-      if (this.isInvincible) {
+      if (this.reviveGraceTimer > 0) {
+        // Invulnerable during revive grace — bounce off
+        p.vy = -JUMP_FORCE * 0.5;
+        p.y = this.lavaY - p.height - 5;
+      } else if (this.isInvincible) {
         // Invincible: bounce off lava
         p.vy = -JUMP_FORCE;
         p.y = this.lavaY - p.height - 5;
