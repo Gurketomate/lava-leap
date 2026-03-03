@@ -899,9 +899,18 @@ export class GameEngine {
       }
     }
     if (p.y > this.cameraY + this.height + 100) {
-      if (this.hasShield) {
+      if (this.shieldGraceTimer > 0) {
+        p.vy = -JUMP_FORCE * 0.5;
+        p.y = this.cameraY + this.height;
+      } else if (this.hasShield) {
         this.hasShield = false;
-        p.vy = -JUMP_FORCE;
+        p.vx = 0;
+        p.vy = -JUMP_FORCE * 1.4 * (1 + this.jumpBonus);
+        this.shieldGraceTimer = 0.5;
+        this.shieldInputLockTimer = 0.2;
+        this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00aaff', 18);
+        this.screenShake = 0.4;
+        playPowerUp();
       } else {
         this.running = false;
         deathCause('fall');
