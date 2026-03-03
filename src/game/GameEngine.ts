@@ -404,7 +404,14 @@ export class GameEngine {
       const newY = this.highestPlatformY - gap;
       let newX = Math.random() * (this.width - PLATFORM_WIDTH);
 
-      const type = this.pickPlatformType();
+      let type = this.pickPlatformType();
+      
+      // Danger platforms: never spawn too close to lava
+      if (type === 'danger' && newY > this.lavaY - 200) {
+        type = 'normal';
+      }
+      
+      this.lastPlatformType = type;
 
       const baseWidth = PLATFORM_WIDTH + (type === 'normal' ? Math.random() * 20 : 0);
       const platWidth = baseWidth * widthMod;
