@@ -1194,7 +1194,7 @@ export class GameEngine {
       boost: 'rgba(255, 102, 0, 0.5)',
       reward: 'rgba(255, 34, 85, 0.6)',
       lavaControl: 'rgba(0, 170, 204, 0.5)',
-      teleport: 'rgba(170, 68, 255, 0.6)',
+      danger: 'rgba(204, 34, 0, 0.6)',
       invincible: 'rgba(255, 204, 0, 0.6)',
       vanishing: 'rgba(136, 153, 170, 0.4)',
     };
