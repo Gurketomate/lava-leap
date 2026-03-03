@@ -267,9 +267,10 @@ export class GameEngine {
     this.doubleJumpFlashTimer = 0;
     this.invincibleTimer = 0;
     this.isInvincible = false;
-    this.lavaControlPush = 0;
-    this.dangerLavaBoostTimer = 0;
-    this.dangerLavaBoostMult = 1.0;
+    this.lavaHeightTarget = 0;
+    this.lavaHeightSmooth = 0;
+    this.lavaHeightSmoothSpeed = 0;
+    this.lavaMinY = this.height + 100; // initial lava position = minimum
     this.lastPlatformType = 'normal';
     this.levelComplete = false;
     this.levelCompleteTimer = 0;
