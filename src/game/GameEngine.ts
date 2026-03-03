@@ -1244,12 +1244,12 @@ export class GameEngine {
       ctx.fillText('❄', plat.x + plat.width / 2, plat.y + 11);
     }
 
-    if (plat.type === 'teleport') {
+    if (plat.type === 'danger') {
       const pulse = Math.sin(performance.now() / 150) * 0.3 + 0.7;
-      ctx.fillStyle = `rgba(200, 150, 255, ${pulse})`;
+      ctx.fillStyle = `rgba(255, 80, 30, ${pulse})`;
       ctx.font = '10px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('⚡', plat.x + plat.width / 2, plat.y + 11);
+      ctx.fillText('🔥', plat.x + plat.width / 2, plat.y + 11);
     }
 
     if (plat.type === 'invincible') {
