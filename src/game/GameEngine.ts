@@ -601,83 +601,67 @@ export class GameEngine {
           p.y + p.height >= plat.y &&
           p.y + p.height <= plat.y + plat.height + p.vy * dt + 5
         ) {
-          const jumpForce = JUMP_FORCE * (1 + this.jumpBonus);
-
           if (plat.type === 'boost') {
-            p.vy = -BOOST_FORCE * (1 + this.jumpBonus);
+            this.performJump('boost', BOOST_FORCE / JUMP_FORCE);
             this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ff6600', 8);
             playJump(1.0);
           } else if (plat.type === 'breakable' || plat.type === 'reward') {
-            p.vy = -jumpForce;
+            this.performJump('normal', 1.0);
             plat.broken = true;
             this.spawnParticles(plat.x + plat.width / 2, plat.y, plat.type === 'reward' ? '#ffd700' : '#888888', 8);
             playJump(0.5);
           } else if (plat.type === 'lavaControl') {
-            // Push lava down 100-180px
-            p.vy = -jumpForce;
+            this.performJump('normal', 1.0);
             const push = 100 + Math.random() * 80;
             this.lavaY += push;
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#00ccff', 10);
-            plat.broken = true; // single use
+            plat.broken = true;
             playJump(0.7);
           } else if (plat.type === 'teleport') {
-            // Teleport player upward and ensure a landing platform exists
+            // Purple lightning platform — 1.6x force
             const teleportDist = 150 + Math.random() * 100;
             const targetY = p.y - teleportDist;
-            
-            // Check if any reachable platform exists near the destination
+
             const hasNearbyPlatform = this.platforms.some(
               (other) => !other.broken && other !== plat &&
                 Math.abs(other.y - targetY) < 80 &&
                 Math.abs(other.x - p.x) < 200
             );
-            
-            // If no platform nearby, spawn one at the destination
+
             if (!hasNearbyPlatform) {
-              const canvasW = this.canvas.width;
               const platWidth = 70 + Math.random() * 30;
-              const spawnX = Math.max(10, Math.min(canvasW - platWidth - 10, p.x - platWidth / 2 + (Math.random() - 0.5) * 80));
+              const spawnX = Math.max(10, Math.min(this.width - platWidth - 10, p.x - platWidth / 2 + (Math.random() - 0.5) * 80));
               this.platforms.push({
-                x: spawnX,
-                y: targetY + 20,
-                width: platWidth,
-                height: 12,
-                type: 'normal',
-                broken: false,
-                visible: true,
+                x: spawnX, y: targetY + 20, width: platWidth, height: 12,
+                type: 'normal', broken: false, visible: true,
               });
             }
-            
+
             p.y = targetY;
-            p.vy = -jumpForce;
+            this.performJump('lightning', 1.6);
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#aa00ff', 12);
             this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#aa00ff', 12);
+            this.screenShake = 0.15;
             plat.broken = true;
             playJump(0.9);
           } else if (plat.type === 'invincible') {
-            // Grant 3s invincibility
-            p.vy = -jumpForce;
+            this.performJump('normal', 1.0);
             this.isInvincible = true;
             this.invincibleTimer = 3.0;
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ffdd00', 12);
             plat.broken = true;
             playPowerUp();
           } else if (plat.type === 'vanishing') {
-            p.vy = -jumpForce;
-            // Start vanish countdown on landing
+            this.performJump('normal', 1.0);
             plat.vanishTimer = plat.vanishDuration || 2.5;
             playJump(0.3);
           } else {
-            p.vy = -jumpForce;
+            this.performJump('normal', 1.0);
             playJump(0.4);
           }
 
           p.y = plat.y - p.height;
-          p.doubleJumpUsed = false;
-          this.wasOnGround = true;
-          this.coyoteTimer = 0;
-
-          if (this.jumpRequested) { this.jumpRequested = false; this.jumpBufferTimer = 0; }
+          // Jump state already reset by performJump()
           break;
         }
       }
@@ -940,19 +924,13 @@ export class GameEngine {
       this.invincibleTimer = 0;
     }
 
-    // Reset all velocity for controlled rebound
+    // Position above lava
     p.vx = 0;
-    p.vy = 0;
     p.y = Math.min(p.y, this.lavaY - p.height - 5);
 
-    // Strong upward force: 1.4x jump
-    p.vy = -JUMP_FORCE * 1.4 * (1 + this.jumpBonus);
-
-    // Reset jump state
-    p.jumpsRemaining = 1;
-    p.doubleJumpUsed = false;
-    this.jumpRequested = false;
-    this.jumpBufferTimer = 0;
+    // Use unified jump with shield rebound priority (1.4x)
+    this.performJump('shieldRebound', 1.4);
+    console.log('[Jump] Shield Rebound (1.40x)');
 
     // Grace timers — invulnerability, input lock, lava pause
     this.shieldGraceTimer = 0.5;
@@ -1398,10 +1376,43 @@ export class GameEngine {
     ctx.shadowBlur = 0;
   }
 
+  /**
+   * Unified jump controller — ALL jumps go through here.
+   * @param type - 'normal' | 'double' | 'boost' | 'lightning' | 'shieldRebound'
+   * @param forceMult - multiplier on JUMP_FORCE (default 1.0)
+   */
+  performJump(type: 'normal' | 'double' | 'boost' | 'lightning' | 'shieldRebound', forceMult = 1.0) {
+    const p = this.player;
+    const baseForce = JUMP_FORCE * (1 + this.jumpBonus);
+
+    // Always reset vy before applying force for consistency
+    p.vy = 0;
+    p.vy = -baseForce * forceMult;
+
+    // Reset jump state on any landing-based jump
+    if (type !== 'double') {
+      p.doubleJumpUsed = false;
+      this.wasOnGround = true;
+      this.coyoteTimer = 0;
+    }
+
+    if (this.jumpRequested) {
+      this.jumpRequested = false;
+      this.jumpBufferTimer = 0;
+    }
+
+    console.log(`[Jump] ${type.charAt(0).toUpperCase() + type.slice(1)} Jump (force: ${forceMult.toFixed(2)}x)`);
+  }
+
   doDoubleJump() {
-    if (this.hasDoubleJump && !this.player.doubleJumpUsed && this.player.vy > 0) {
-      this.player.vy = -JUMP_FORCE * 0.8 * (1 + this.jumpBonus);
+    // Shield rebound has highest priority — don't override it
+    if (this.shieldGraceTimer > 0) return;
+    // Input lock check
+    if (this.shieldInputLockTimer > 0 || this.reviveInputLockTimer > 0) return;
+
+    if (this.hasDoubleJump && !this.player.doubleJumpUsed) {
       this.player.doubleJumpUsed = true;
+      this.performJump('double', 1.2);
       this.doubleJumpFlashTimer = 0.3;
       this.spawnParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height, '#00ccff', 12);
       this.spawnParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height, '#ffffff', 6);
