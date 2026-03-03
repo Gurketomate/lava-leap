@@ -683,14 +683,44 @@ export class GameEngine {
       }
     }
 
-    // Moving platforms
+    // Moving platforms — bounded movement
     for (const plat of this.platforms) {
       if (plat.type === 'moving' && !plat.broken && plat.originX !== undefined) {
         plat.x += (plat.moveDir || 1) * (plat.moveSpeed || 60) * dt;
-        if (plat.x > plat.originX + (plat.moveRange || 80) || plat.x < plat.originX - (plat.moveRange || 80)) {
+        const range = plat.moveRange || 80;
+        // Reverse at range bounds
+        if (plat.x > plat.originX + range || plat.x < plat.originX - range) {
           plat.moveDir = -(plat.moveDir || 1);
+          plat.x = Math.max(plat.originX - range, Math.min(plat.originX + range, plat.x));
+        }
+        // Hard clamp to screen bounds — never leave play area
+        plat.x = Math.max(0, Math.min(this.width - plat.width, plat.x));
+      }
+
+      // Reward platforms that also move — same bounds
+      if (plat.type === 'reward' && !plat.broken && plat.originX !== undefined && plat.moveSpeed) {
+        plat.x += (plat.moveDir || 1) * (plat.moveSpeed || 60) * dt;
+        const range = plat.moveRange || 70;
+        if (plat.x > plat.originX + range || plat.x < plat.originX - range) {
+          plat.moveDir = -(plat.moveDir || 1);
+          plat.x = Math.max(plat.originX - range, Math.min(plat.originX + range, plat.x));
+        }
+        plat.x = Math.max(0, Math.min(this.width - plat.width, plat.x));
+      }
+
+      // Breakable platform respawn after 4 seconds
+      if ((plat.type === 'breakable') && plat.broken) {
+        if (plat.breakTimer === undefined) plat.breakTimer = 4.0;
+        plat.breakTimer -= dt;
+        if (plat.breakTimer <= 0) {
+          // Respawn at original position if still in valid range
+          if (plat.y > this.cameraY - 50 && plat.y < this.lavaY - 50) {
+            plat.broken = false;
+            plat.breakTimer = undefined;
+          }
         }
       }
+
       // Vanishing platforms countdown
       if (plat.type === 'vanishing' && !plat.broken && plat.vanishTimer !== undefined && plat.vanishTimer > 0) {
         plat.vanishTimer -= dt;
@@ -701,6 +731,9 @@ export class GameEngine {
         }
       }
     }
+
+    // === SAFETY CHECK: ensure at least one reachable platform exists ===
+    this.ensureReachablePlatform();
 
     // Invincibility timer
     if (this.isInvincible) {
@@ -853,40 +886,18 @@ export class GameEngine {
     // Game over checks
     if (p.y + p.height > this.lavaY) {
       if (this.reviveGraceTimer > 0) {
-        // Invulnerable during revive grace — bounce off
         p.vy = -JUMP_FORCE * 0.5;
         p.y = this.lavaY - p.height - 5;
       } else if (this.isInvincible) {
-        // Invincible: bounce off lava
         p.vy = -JUMP_FORCE;
         p.y = this.lavaY - p.height - 5;
         this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ffdd00', 10);
       } else if (this.shieldGraceTimer > 0) {
-        // Invulnerable after shield break — bounce off
         p.vy = -JUMP_FORCE * 0.5;
         p.y = this.lavaY - p.height - 5;
-      } else if (this.hasShield) {
-        // Strong controlled rebound
-        this.hasShield = false;
-        p.vx = 0;
-        p.vy = 0;
-        p.y = this.lavaY - p.height - 5;
-        p.vy = -JUMP_FORCE * 1.4 * (1 + this.jumpBonus);
-        p.jumpsRemaining = 1;
-        p.doubleJumpUsed = false;
-        this.jumpRequested = false;
-        this.jumpBufferTimer = 0;
-
-        // Grace timers
-        this.shieldGraceTimer = 0.5;
-        this.shieldInputLockTimer = 0.2;
-        this.shieldLavaPauseTimer = 0.3;
-
-        // Visual & audio feedback
-        this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00aaff', 18);
-        this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ffffff', 8);
-        this.screenShake = 0.4;
-        playPowerUp();
+      } else if (this.hasShield || this.isInvincible) {
+        // Unified shield rebound — works for purchased shield AND star-platform shield
+        this.activateShieldRebound();
       } else {
         this.running = false;
         deathCause('lava');
@@ -902,15 +913,8 @@ export class GameEngine {
       if (this.shieldGraceTimer > 0) {
         p.vy = -JUMP_FORCE * 0.5;
         p.y = this.cameraY + this.height;
-      } else if (this.hasShield) {
-        this.hasShield = false;
-        p.vx = 0;
-        p.vy = -JUMP_FORCE * 1.4 * (1 + this.jumpBonus);
-        this.shieldGraceTimer = 0.5;
-        this.shieldInputLockTimer = 0.2;
-        this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00aaff', 18);
-        this.screenShake = 0.4;
-        playPowerUp();
+      } else if (this.hasShield || this.isInvincible) {
+        this.activateShieldRebound();
       } else {
         this.running = false;
         deathCause('fall');
@@ -921,6 +925,76 @@ export class GameEngine {
         this.onGameOver({ score: this.score, coins: this.coinCount });
         return;
       }
+    }
+  }
+
+  /** Unified shield rebound — used by BOTH purchased shield and star-platform invincibility */
+  activateShieldRebound() {
+    const p = this.player;
+
+    // Consume the shield (purchased or invincible)
+    if (this.hasShield) {
+      this.hasShield = false;
+    } else if (this.isInvincible) {
+      this.isInvincible = false;
+      this.invincibleTimer = 0;
+    }
+
+    // Reset all velocity for controlled rebound
+    p.vx = 0;
+    p.vy = 0;
+    p.y = Math.min(p.y, this.lavaY - p.height - 5);
+
+    // Strong upward force: 1.4x jump
+    p.vy = -JUMP_FORCE * 1.4 * (1 + this.jumpBonus);
+
+    // Reset jump state
+    p.jumpsRemaining = 1;
+    p.doubleJumpUsed = false;
+    this.jumpRequested = false;
+    this.jumpBufferTimer = 0;
+
+    // Grace timers — invulnerability, input lock, lava pause
+    this.shieldGraceTimer = 0.5;
+    this.shieldInputLockTimer = 0.2;
+    this.shieldLavaPauseTimer = 0.3;
+
+    // Visual & audio feedback
+    this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00aaff', 18);
+    this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ffffff', 8);
+    this.screenShake = 0.4;
+    playPowerUp();
+  }
+
+  /** Safety check: ensure at least one reachable platform exists above the player */
+  ensureReachablePlatform() {
+    const p = this.player;
+    const visibleTop = this.cameraY - 50;
+    const visibleBottom = this.cameraY + this.height + 50;
+
+    // Find active platforms in the visible/near range above the player
+    const activePlatforms = this.platforms.filter(
+      pl => !pl.broken && (pl.visible !== false) &&
+        pl.y >= visibleTop && pl.y <= visibleBottom
+    );
+
+    // Check if any platform is reachable from the player's current position
+    const hasReachable = activePlatforms.some(pl => {
+      const vertDist = p.y - pl.y;
+      if (vertDist < -50) return false; // platform below player by a lot
+      if (vertDist > this.reachability.safeVerticalDist) return false;
+      return true;
+    });
+
+    if (!hasReachable && activePlatforms.length < 3) {
+      // Spawn a safety platform above the player
+      const safeY = p.y - 60 - Math.random() * 40;
+      const safeW = PLATFORM_WIDTH * 1.2;
+      const safeX = Math.max(10, Math.min(this.width - safeW - 10, p.x - safeW / 2 + (Math.random() - 0.5) * 60));
+      this.platforms.push({
+        x: safeX, y: safeY, width: safeW, height: PLATFORM_HEIGHT,
+        type: 'normal', broken: false,
+      });
     }
   }
 
