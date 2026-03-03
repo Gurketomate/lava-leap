@@ -49,6 +49,11 @@ export class GameEngine {
   invincibleTimer = 0;
   isInvincible = false;
   lavaControlPush = 0; // accumulated lava push-down
+  
+  // Danger platform lava boost
+  dangerLavaBoostTimer = 0;
+  dangerLavaBoostMult = 1.0;
+  lastPlatformType: string = 'normal'; // track to prevent consecutive danger
 
   // Level system
   currentLevelDef: LevelDefinition | null = null;
