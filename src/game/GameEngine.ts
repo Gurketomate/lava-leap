@@ -773,8 +773,8 @@ export class GameEngine {
     adaptiveSpeed = Math.max(LAVA_MIN_SPEED * lavaSlowMult, Math.min(LAVA_ADAPTIVE_MAX_SPEED, adaptiveSpeed));
 
     this.lavaSpeed = adaptiveSpeed;
-    // Pause lava during revive grace
-    if (this.reviveLavaPauseTimer <= 0) {
+    // Pause lava during revive or shield grace
+    if (this.reviveLavaPauseTimer <= 0 && this.shieldLavaPauseTimer <= 0) {
       this.lavaY -= adaptiveSpeed * dt;
     }
 
