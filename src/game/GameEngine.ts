@@ -1426,13 +1426,16 @@ export class GameEngine {
     if (this.shieldGraceTimer > 0) return;
     // Input lock check
     if (this.shieldInputLockTimer > 0 || this.reviveInputLockTimer > 0) return;
+    // Must be airborne
+    if (this.wasOnGround) return;
 
     if (this.hasDoubleJump && !this.player.doubleJumpUsed) {
       this.player.doubleJumpUsed = true;
-      this.performJump('double', 1.2);
+      this.performJump('double', 1.25);
       this.doubleJumpFlashTimer = 0.3;
-      this.spawnParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height, '#00ccff', 12);
-      this.spawnParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height, '#ffffff', 6);
+      this.spawnParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height, '#ffffff', 10);
+      this.spawnParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height, '#ccddff', 6);
+      playJump(0.8);
     }
   }
 
