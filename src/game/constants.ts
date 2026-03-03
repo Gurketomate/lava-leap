@@ -149,7 +149,7 @@ export const LEVELS: LevelDefinition[] = (() => {
       lavaSpeedMod = lerp(0.95, 1.30, lt);
       lavaEndAccel = lerp(1.25, 1.50, lt);
       lavaControlChance = lerp(0.03, 0.05, lt);
-      teleportChance = lerp(0.00, 0.03, lt);
+      dangerChance = lerp(0.00, 0.05, lt);
       invincibleChance = lerp(0.00, 0.02, lt);
       vanishingChance = lerp(0.02, 0.06, lt);
     } else if (id <= 30) {
