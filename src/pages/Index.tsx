@@ -124,16 +124,9 @@ const Index = () => {
   const handleRevive = useCallback(() => {
     const engine = engineRef.current;
     if (!engine) return;
-    store.markUsedAd(); // Track for star rating
-    engine.player.vy = -JUMP_FORCE;
-    engine.lavaY = engine.lavaY + 200;
+    store.markUsedAd();
     store.setScreen('playing');
-    engine.running = true;
-    engine.paused = false;
-    engine.lastTime = performance.now();
-    startMusic();
-    startLavaSound();
-    engine.loop(performance.now());
+    engine.revive();
   }, [store]);
 
   const handleEngineReady = useCallback((engine: GameEngine) => {

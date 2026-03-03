@@ -838,7 +838,11 @@ export class GameEngine {
 
     // Game over checks
     if (p.y + p.height > this.lavaY) {
-      if (this.isInvincible) {
+      if (this.reviveGraceTimer > 0) {
+        // Invulnerable during revive grace — bounce off
+        p.vy = -JUMP_FORCE * 0.5;
+        p.y = this.lavaY - p.height - 5;
+      } else if (this.isInvincible) {
         // Invincible: bounce off lava
         p.vy = -JUMP_FORCE;
         p.y = this.lavaY - p.height - 5;
