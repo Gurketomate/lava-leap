@@ -112,7 +112,7 @@ export const LEVELS: LevelDefinition[] = (() => {
     let lavaSpeedMod: number;
     let lavaEndAccel: number;
     let lavaControlChance: number;
-    let teleportChance: number;
+    let dangerChance: number;
     let invincibleChance: number;
     let vanishingChance: number;
 
