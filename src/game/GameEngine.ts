@@ -49,6 +49,11 @@ export class GameEngine {
   invincibleTimer = 0;
   isInvincible = false;
   lavaControlPush = 0; // accumulated lava push-down
+  
+  // Danger platform lava boost
+  dangerLavaBoostTimer = 0;
+  dangerLavaBoostMult = 1.0;
+  lastPlatformType: string = 'normal'; // track to prevent consecutive danger
 
   // Level system
   currentLevelDef: LevelDefinition | null = null;
@@ -199,8 +204,12 @@ export class GameEngine {
     cumulative += level.lavaControlChance;
     if (r < cumulative) return 'lavaControl';
 
-    cumulative += level.teleportChance;
-    if (r < cumulative) return 'teleport';
+    cumulative += level.dangerChance;
+    if (r < cumulative) {
+      // Never spawn 2 danger platforms consecutively
+      if (this.lastPlatformType === 'danger') return 'normal';
+      return 'danger';
+    }
 
     cumulative += level.invincibleChance;
     if (r < cumulative) return 'invincible';
@@ -255,6 +264,9 @@ export class GameEngine {
     this.invincibleTimer = 0;
     this.isInvincible = false;
     this.lavaControlPush = 0;
+    this.dangerLavaBoostTimer = 0;
+    this.dangerLavaBoostMult = 1.0;
+    this.lastPlatformType = 'normal';
     this.levelComplete = false;
     this.levelCompleteTimer = 0;
 
@@ -392,7 +404,14 @@ export class GameEngine {
       const newY = this.highestPlatformY - gap;
       let newX = Math.random() * (this.width - PLATFORM_WIDTH);
 
-      const type = this.pickPlatformType();
+      let type = this.pickPlatformType();
+      
+      // Danger platforms: never spawn too close to lava
+      if (type === 'danger' && newY > this.lavaY - 200) {
+        type = 'normal';
+      }
+      
+      this.lastPlatformType = type;
 
       const baseWidth = PLATFORM_WIDTH + (type === 'normal' ? Math.random() * 20 : 0);
       const platWidth = baseWidth * widthMod;
@@ -524,6 +543,18 @@ export class GameEngine {
 
     this.elapsedTime += dt;
 
+    // Danger platform lava boost timer — smooth decay
+    if (this.dangerLavaBoostTimer > 0) {
+      this.dangerLavaBoostTimer -= dt;
+      if (this.dangerLavaBoostTimer <= 0) {
+        // Smooth return: don't snap, decay over 1s
+        this.dangerLavaBoostTimer = 0;
+        this.dangerLavaBoostMult = Math.max(1.0, this.dangerLavaBoostMult - dt * 0.2);
+      }
+    } else if (this.dangerLavaBoostMult > 1.0) {
+      this.dangerLavaBoostMult = Math.max(1.0, this.dangerLavaBoostMult - dt * 0.5);
+    }
+
     // Revive grace timers
     if (this.reviveGraceTimer > 0) this.reviveGraceTimer -= dt;
     if (this.reviveInputLockTimer > 0) {
@@ -617,33 +648,16 @@ export class GameEngine {
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#00ccff', 10);
             plat.broken = true;
             playJump(0.7);
-          } else if (plat.type === 'teleport') {
-            // Purple lightning platform — 1.6x force
-            const teleportDist = 150 + Math.random() * 100;
-            const targetY = p.y - teleportDist;
-
-            const hasNearbyPlatform = this.platforms.some(
-              (other) => !other.broken && other !== plat &&
-                Math.abs(other.y - targetY) < 80 &&
-                Math.abs(other.x - p.x) < 200
-            );
-
-            if (!hasNearbyPlatform) {
-              const platWidth = 70 + Math.random() * 30;
-              const spawnX = Math.max(10, Math.min(this.width - platWidth - 10, p.x - platWidth / 2 + (Math.random() - 0.5) * 80));
-              this.platforms.push({
-                x: spawnX, y: targetY + 20, width: platWidth, height: 12,
-                type: 'normal', broken: false, visible: true,
-              });
-            }
-
-            p.y = targetY;
-            this.performJump('lightning', 1.6);
-            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#aa00ff', 12);
-            this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#aa00ff', 12);
-            this.screenShake = 0.15;
+          } else if (plat.type === 'danger') {
+            // Red danger platform — normal jump but lava speeds up 20% for 4s
+            this.performJump('normal', 1.0);
+            this.dangerLavaBoostTimer = 4.0;
+            this.dangerLavaBoostMult = 1.2;
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ff3333', 8);
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ff6600', 5);
+            this.screenShake = 0.1;
             plat.broken = true;
-            playJump(0.9);
+            playJump(0.6);
           } else if (plat.type === 'invincible') {
             this.performJump('normal', 1.0);
             this.isInvincible = true;
@@ -782,6 +796,9 @@ export class GameEngine {
     if (this.inLavaSurge) {
       adaptiveSpeed *= LAVA_SURGE_MULTIPLIER;
     }
+
+    // Apply danger platform lava boost
+    adaptiveSpeed *= this.dangerLavaBoostMult;
 
     // Apply lava slow power-up
     adaptiveSpeed *= lavaSlowMult;
@@ -1172,7 +1189,7 @@ export class GameEngine {
       boost: '#ff6600',
       reward: '#ff2255',
       lavaControl: '#00aacc',
-      teleport: '#aa44ff',
+      danger: '#cc2200',
       invincible: '#ffcc00',
       vanishing: '#8899aa',
     };
@@ -1184,7 +1201,7 @@ export class GameEngine {
       boost: 'rgba(255, 102, 0, 0.5)',
       reward: 'rgba(255, 34, 85, 0.6)',
       lavaControl: 'rgba(0, 170, 204, 0.5)',
-      teleport: 'rgba(170, 68, 255, 0.6)',
+      danger: 'rgba(204, 34, 0, 0.6)',
       invincible: 'rgba(255, 204, 0, 0.6)',
       vanishing: 'rgba(136, 153, 170, 0.4)',
     };
@@ -1234,12 +1251,12 @@ export class GameEngine {
       ctx.fillText('❄', plat.x + plat.width / 2, plat.y + 11);
     }
 
-    if (plat.type === 'teleport') {
+    if (plat.type === 'danger') {
       const pulse = Math.sin(performance.now() / 150) * 0.3 + 0.7;
-      ctx.fillStyle = `rgba(200, 150, 255, ${pulse})`;
+      ctx.fillStyle = `rgba(255, 80, 30, ${pulse})`;
       ctx.font = '10px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('⚡', plat.x + plat.width / 2, plat.y + 11);
+      ctx.fillText('🔥', plat.x + plat.width / 2, plat.y + 11);
     }
 
     if (plat.type === 'invincible') {
@@ -1378,10 +1395,10 @@ export class GameEngine {
 
   /**
    * Unified jump controller — ALL jumps go through here.
-   * @param type - 'normal' | 'double' | 'boost' | 'lightning' | 'shieldRebound'
+   * @param type - 'normal' | 'double' | 'boost' | 'shieldRebound'
    * @param forceMult - multiplier on JUMP_FORCE (default 1.0)
    */
-  performJump(type: 'normal' | 'double' | 'boost' | 'lightning' | 'shieldRebound', forceMult = 1.0) {
+  performJump(type: 'normal' | 'double' | 'boost' | 'shieldRebound', forceMult = 1.0) {
     const p = this.player;
     const baseForce = JUMP_FORCE * (1 + this.jumpBonus);
 
@@ -1409,13 +1426,16 @@ export class GameEngine {
     if (this.shieldGraceTimer > 0) return;
     // Input lock check
     if (this.shieldInputLockTimer > 0 || this.reviveInputLockTimer > 0) return;
+    // Must be airborne
+    if (this.wasOnGround) return;
 
     if (this.hasDoubleJump && !this.player.doubleJumpUsed) {
       this.player.doubleJumpUsed = true;
-      this.performJump('double', 1.2);
+      this.performJump('double', 1.25);
       this.doubleJumpFlashTimer = 0.3;
-      this.spawnParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height, '#00ccff', 12);
-      this.spawnParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height, '#ffffff', 6);
+      this.spawnParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height, '#ffffff', 10);
+      this.spawnParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height, '#ccddff', 6);
+      playJump(0.8);
     }
   }
 

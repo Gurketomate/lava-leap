@@ -11,7 +11,7 @@ export interface Player {
   jumpsRemaining: number;
 }
 
-export type PlatformType = 'normal' | 'breakable' | 'moving' | 'boost' | 'reward' | 'lavaControl' | 'teleport' | 'invincible' | 'vanishing';
+export type PlatformType = 'normal' | 'breakable' | 'moving' | 'boost' | 'reward' | 'lavaControl' | 'danger' | 'invincible' | 'vanishing';
 
 export interface Platform {
   x: number;
@@ -87,7 +87,7 @@ export interface LevelDefinition {
   lavaSpeedMod: number;
   lavaEndAccel: number; // lava acceleration multiplier in last 20% of level
   lavaControlChance: number;
-  teleportChance: number;
+  dangerChance: number;
   invincibleChance: number;
   vanishingChance: number;
 }

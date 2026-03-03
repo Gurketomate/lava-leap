@@ -112,7 +112,7 @@ export const LEVELS: LevelDefinition[] = (() => {
     let lavaSpeedMod: number;
     let lavaEndAccel: number;
     let lavaControlChance: number;
-    let teleportChance: number;
+    let dangerChance: number;
     let invincibleChance: number;
     let vanishingChance: number;
 
@@ -130,7 +130,7 @@ export const LEVELS: LevelDefinition[] = (() => {
       lavaSpeedMod = lerp(0.70, 0.90, lt);
       lavaEndAccel = lerp(1.1, 1.25, lt);
       lavaControlChance = lerp(0.00, 0.03, lt);
-      teleportChance = 0;
+      dangerChance = 0;
       invincibleChance = 0;
       vanishingChance = 0;
     } else if (id <= 15) {
@@ -149,7 +149,7 @@ export const LEVELS: LevelDefinition[] = (() => {
       lavaSpeedMod = lerp(0.95, 1.30, lt);
       lavaEndAccel = lerp(1.25, 1.50, lt);
       lavaControlChance = lerp(0.03, 0.05, lt);
-      teleportChance = lerp(0.00, 0.03, lt);
+      dangerChance = lerp(0.00, 0.05, lt);
       invincibleChance = lerp(0.00, 0.02, lt);
       vanishingChance = lerp(0.02, 0.06, lt);
     } else if (id <= 30) {
@@ -169,7 +169,7 @@ export const LEVELS: LevelDefinition[] = (() => {
       lavaSpeedMod = lerp(1.30, 1.70, lt);
       lavaEndAccel = lerp(1.50, 1.80, lt);
       lavaControlChance = lerp(0.04, 0.05, lt);
-      teleportChance = lerp(0.03, 0.04, lt);
+      dangerChance = lerp(0.05, 0.10, lt);
       invincibleChance = lerp(0.02, 0.03, lt);
       vanishingChance = lerp(0.06, 0.10, lt);
     } else {
@@ -190,7 +190,7 @@ export const LEVELS: LevelDefinition[] = (() => {
       lavaSpeedMod = lerp(1.70, 2.20, lt);
       lavaEndAccel = lerp(1.80, 2.50, lt);
       lavaControlChance = lerp(0.05, 0.06, lt);
-      teleportChance = lerp(0.04, 0.05, lt);
+      dangerChance = lerp(0.08, 0.12, lt);
       invincibleChance = lerp(0.03, 0.04, lt);
       vanishingChance = lerp(0.10, 0.12, lt);
     }
@@ -207,7 +207,7 @@ export const LEVELS: LevelDefinition[] = (() => {
       id, name, targetHeight,
       normalChance, breakableChance, movingChance, boostChance, rewardChance,
       platformWidthMod, lavaSpeedMod, lavaEndAccel,
-      lavaControlChance, teleportChance, invincibleChance, vanishingChance,
+      lavaControlChance, dangerChance, invincibleChance, vanishingChance,
     });
   }
 

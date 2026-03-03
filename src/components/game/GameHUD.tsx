@@ -1,10 +1,13 @@
 import { useGameStore } from '@/stores/gameStore';
 import { LEVELS } from '@/game/constants';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const GameHUD = () => {
   const { score, coins, lavaProximity, activePowerUps, screenShake, currentLevel } = useGameStore();
   const levelDef = LEVELS.find(l => l.id === currentLevel);
   const progress = levelDef ? Math.min(1, score / levelDef.targetHeight) : 0;
+  const isMobile = useIsMobile();
+  const hasDoubleJump = activePowerUps.some(pu => pu.type === 'doubleJump');
 
   return (
     <div className="absolute inset-0 pointer-events-none z-10" style={{
@@ -50,6 +53,14 @@ const GameHUD = () => {
         </div>
       )}
 
+      {/* Double Jump Hint */}
+      {hasDoubleJump && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+          <div className="glass-panel px-4 py-1.5 text-xs text-muted-foreground font-body animate-pulse">
+            {isMobile ? '📱 Tap for Double Jump' : '⌨️ SPACE for Double Jump'}
+          </div>
+        </div>
+      )}
 
       {/* Heat Bar (Lava proximity) */}
       <div className="absolute bottom-0 left-0 w-full h-2">

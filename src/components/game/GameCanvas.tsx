@@ -32,8 +32,7 @@ const GameCanvas = ({ onReady }: GameCanvasProps) => {
         return;
       }
       clientX = e.touches[0].clientX;
-
-      // Double tap detection for double jump
+      // Two-finger tap for double jump
       if (e.touches.length >= 2) {
         engineRef.current.doDoubleJump();
       }
@@ -64,7 +63,7 @@ const GameCanvas = ({ onReady }: GameCanvasProps) => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft' || e.key === 'a') engine.setInput(-1);
       if (e.key === 'ArrowRight' || e.key === 'd') engine.setInput(1);
-      if (e.key === ' ') engine.doDoubleJump();
+      if (e.key === ' ') { e.preventDefault(); engine.doDoubleJump(); }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       if (['ArrowLeft', 'a', 'ArrowRight', 'd'].includes(e.key)) engine.setInput(0);
