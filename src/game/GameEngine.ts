@@ -104,6 +104,11 @@ export class GameEngine {
   reviveInputLockTimer = 0;  // input lock countdown
   reviveLavaPauseTimer = 0;  // lava pause countdown
 
+  // Shield rebound grace state
+  shieldGraceTimer = 0;      // 0.5s invulnerability after shield break
+  shieldInputLockTimer = 0;  // 0.2s input lock after rebound
+  shieldLavaPauseTimer = 0;  // 0.3s lava pause after shield break
+
   // Callbacks
   onScoreUpdate: Callback = () => {};
   onCoinCollect: Callback = () => {};
