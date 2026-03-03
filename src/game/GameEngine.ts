@@ -294,7 +294,72 @@ export class GameEngine {
     this.loop(this.lastTime);
   }
 
-  setInput(dir: number) { this.inputDir = dir; }
+  setInput(dir: number) {
+    // Block input during revive input lock
+    if (this.reviveInputLockTimer > 0) return;
+    this.inputDir = dir;
+  }
+
+  /** Revive: respawn on last safe platform with grace period */
+  revive() {
+    const p = this.player;
+
+    // Find the highest non-broken platform that is below or near the player
+    const safePlatforms = this.platforms
+      .filter(pl => !pl.broken && pl.type !== 'breakable' && pl.type !== 'vanishing'
+        && (pl.visible !== false) && pl.y > this.cameraY - 100)
+      .sort((a, b) => a.y - b.y); // sort by Y ascending (highest first)
+
+    const lastSafe = safePlatforms.length > 0 ? safePlatforms[0] : null;
+
+    if (lastSafe) {
+      p.x = lastSafe.x + lastSafe.width / 2 - p.width / 2;
+      p.y = lastSafe.y - p.height;
+    } else {
+      // Fallback: spawn a platform under player
+      const platW = 100;
+      const spawnY = p.y + 20;
+      const spawnX = Math.max(0, Math.min(this.width - platW, p.x));
+      this.platforms.push({
+        x: spawnX, y: spawnY, width: platW, height: PLATFORM_HEIGHT,
+        type: 'normal', broken: false,
+      });
+      p.x = spawnX + platW / 2 - p.width / 2;
+      p.y = spawnY - p.height;
+    }
+
+    // Reset physics
+    p.vx = 0;
+    p.vy = 0;
+    p.doubleJumpUsed = false;
+    this.inputDir = 0;
+    this.wasOnGround = true;
+    this.coyoteTimer = 0;
+    this.jumpRequested = false;
+    this.jumpBufferTimer = 0;
+
+    // Push lava down to safe distance
+    this.lavaY = Math.max(this.lavaY, p.y + this.height * 0.5);
+
+    // Set grace timers
+    this.reviveGraceTimer = 0.75;
+    this.reviveInputLockTimer = 0.3;
+    this.reviveLavaPauseTimer = 0.5;
+
+    // Stabilize camera immediately
+    this.cameraY = p.y - this.height * 0.35;
+
+    // Visual feedback
+    this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00ff88', 15);
+
+    // Resume engine
+    this.running = true;
+    this.paused = false;
+    this.lastTime = performance.now();
+    startMusic();
+    startLavaSound();
+    this.loop(this.lastTime);
+  }
 
   applyPowerUp(powerUp: PowerUp) {
     playPowerUp();
