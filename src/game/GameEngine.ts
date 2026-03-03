@@ -928,6 +928,76 @@ export class GameEngine {
     }
   }
 
+  /** Unified shield rebound — used by BOTH purchased shield and star-platform invincibility */
+  activateShieldRebound() {
+    const p = this.player;
+
+    // Consume the shield (purchased or invincible)
+    if (this.hasShield) {
+      this.hasShield = false;
+    } else if (this.isInvincible) {
+      this.isInvincible = false;
+      this.invincibleTimer = 0;
+    }
+
+    // Reset all velocity for controlled rebound
+    p.vx = 0;
+    p.vy = 0;
+    p.y = Math.min(p.y, this.lavaY - p.height - 5);
+
+    // Strong upward force: 1.4x jump
+    p.vy = -JUMP_FORCE * 1.4 * (1 + this.jumpBonus);
+
+    // Reset jump state
+    p.jumpsRemaining = 1;
+    p.doubleJumpUsed = false;
+    this.jumpRequested = false;
+    this.jumpBufferTimer = 0;
+
+    // Grace timers — invulnerability, input lock, lava pause
+    this.shieldGraceTimer = 0.5;
+    this.shieldInputLockTimer = 0.2;
+    this.shieldLavaPauseTimer = 0.3;
+
+    // Visual & audio feedback
+    this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00aaff', 18);
+    this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ffffff', 8);
+    this.screenShake = 0.4;
+    playPowerUp();
+  }
+
+  /** Safety check: ensure at least one reachable platform exists above the player */
+  ensureReachablePlatform() {
+    const p = this.player;
+    const visibleTop = this.cameraY - 50;
+    const visibleBottom = this.cameraY + this.height + 50;
+
+    // Find active platforms in the visible/near range above the player
+    const activePlatforms = this.platforms.filter(
+      pl => !pl.broken && (pl.visible !== false) &&
+        pl.y >= visibleTop && pl.y <= visibleBottom
+    );
+
+    // Check if any platform is reachable from the player's current position
+    const hasReachable = activePlatforms.some(pl => {
+      const vertDist = p.y - pl.y;
+      if (vertDist < -50) return false; // platform below player by a lot
+      if (vertDist > this.reachability.safeVerticalDist) return false;
+      return true;
+    });
+
+    if (!hasReachable && activePlatforms.length < 3) {
+      // Spawn a safety platform above the player
+      const safeY = p.y - 60 - Math.random() * 40;
+      const safeW = PLATFORM_WIDTH * 1.2;
+      const safeX = Math.max(10, Math.min(this.width - safeW - 10, p.x - safeW / 2 + (Math.random() - 0.5) * 60));
+      this.platforms.push({
+        x: safeX, y: safeY, width: safeW, height: PLATFORM_HEIGHT,
+        type: 'normal', broken: false,
+      });
+    }
+  }
+
   spawnParticles(x: number, y: number, color: string, count: number) {
     for (let i = 0; i < count; i++) {
       this.particles.push({
