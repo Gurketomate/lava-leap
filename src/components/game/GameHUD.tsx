@@ -1,10 +1,13 @@
 import { useGameStore } from '@/stores/gameStore';
 import { LEVELS } from '@/game/constants';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const GameHUD = () => {
   const { score, coins, lavaProximity, activePowerUps, screenShake, currentLevel } = useGameStore();
   const levelDef = LEVELS.find(l => l.id === currentLevel);
   const progress = levelDef ? Math.min(1, score / levelDef.targetHeight) : 0;
+  const isMobile = useIsMobile();
+  const hasDoubleJump = activePowerUps.some(pu => pu.type === 'doubleJump');
 
   return (
     <div className="absolute inset-0 pointer-events-none z-10" style={{
