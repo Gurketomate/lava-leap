@@ -532,6 +532,15 @@ export class GameEngine {
     }
     if (this.reviveLavaPauseTimer > 0) this.reviveLavaPauseTimer -= dt;
 
+    // Shield rebound grace timers
+    if (this.shieldGraceTimer > 0) this.shieldGraceTimer -= dt;
+    if (this.shieldInputLockTimer > 0) {
+      this.shieldInputLockTimer -= dt;
+      this.jumpRequested = false;
+      this.jumpBufferTimer = 0;
+    }
+    if (this.shieldLavaPauseTimer > 0) this.shieldLavaPauseTimer -= dt;
+
     // No-safe-zone timer
     if (!this.inNoSafeZone) {
       this.noSafeZoneTimer -= dt;
