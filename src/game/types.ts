@@ -87,7 +87,7 @@ export interface LevelDefinition {
   lavaSpeedMod: number;
   lavaEndAccel: number; // lava acceleration multiplier in last 20% of level
   lavaControlChance: number;
-  teleportChance: number;
+  dangerChance: number;
   invincibleChance: number;
   vanishingChance: number;
 }
