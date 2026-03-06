@@ -7,7 +7,7 @@ interface UpgradeLevels {
 }
 
 interface LevelStars {
-  [levelId: number]: number; // 1-3
+  [levelId: number]: number;
 }
 
 interface GameStore {
@@ -16,13 +16,10 @@ interface GameStore {
   highScore: number;
   coins: number;
   totalCoins: number;
-  activePowerUps: PowerUp[];
-  nextUpgradeAt: number;
   lavaProximity: number;
   phase: number;
   screenShake: number;
   upgradeLevels: UpgradeLevels;
-  upgradeChoices: PowerUp[];
   currentLevel: number;
   maxUnlockedLevel: number;
 
@@ -39,10 +36,6 @@ interface GameStore {
   setLavaProximity: (p: number) => void;
   setPhase: (phase: number) => void;
   setScreenShake: (shake: number) => void;
-  addCoin: () => void;
-  addPowerUp: (p: PowerUp) => void;
-  setUpgradeChoices: (choices: PowerUp[]) => void;
-  setNextUpgradeAt: (n: number) => void;
   setCurrentLevel: (level: number) => void;
   markUsedAd: () => void;
   markUsedPowerUp: () => void;
@@ -64,7 +57,7 @@ const loadFromStorage = () => {
       highScore: data.highScore || 0,
       totalCoins: data.totalCoins || 0,
       upgradeLevels: data.upgradeLevels || {},
-      maxUnlockedLevel: 50, // TEST: all levels unlocked
+      maxUnlockedLevel: 50,
       levelStars: data.levelStars || {},
     };
   } catch {
@@ -82,13 +75,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   highScore: 0,
   coins: 0,
   totalCoins: 0,
-  activePowerUps: [],
-  nextUpgradeAt: 500,
   lavaProximity: 0,
   upgradeLevels: {},
   phase: 1,
   screenShake: 0,
-  upgradeChoices: [],
   currentLevel: 1,
   maxUnlockedLevel: 1,
   runUsedAd: false,
@@ -103,20 +93,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setLavaProximity: (lavaProximity) => set({ lavaProximity }),
   setPhase: (phase) => set({ phase }),
   setScreenShake: (screenShake) => set({ screenShake }),
-  addCoin: () => set((s) => ({ coins: s.coins + 1 })),
-  addPowerUp: (p) => set((s) => {
-    const existing = s.activePowerUps.find((e) => e.type === p.type);
-    if (existing) {
-      return {
-        activePowerUps: s.activePowerUps.map((e) =>
-          e.type === p.type ? { ...e, stacks: e.stacks + 1 } : e
-        ),
-      };
-    }
-    return { activePowerUps: [...s.activePowerUps, { ...p, stacks: 1 }] };
-  }),
-  setUpgradeChoices: (upgradeChoices) => set({ upgradeChoices }),
-  setNextUpgradeAt: (nextUpgradeAt) => set({ nextUpgradeAt }),
   setCurrentLevel: (currentLevel) => set({ currentLevel }),
 
   markUsedAd: () => set({ runUsedAd: true }),
@@ -131,15 +107,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const newLevels = { ...s.upgradeLevels };
     if (newLevels['startShield'] > 0) newLevels['startShield'] = 0;
 
-    // Calculate stars
     let stars = 3;
-    if (s.runUsedAd) {
-      stars = 1;
-    } else if (s.runUsedPowerUp || s.runUsedShield) {
-      stars = 2;
-    }
+    if (s.runUsedAd) stars = 1;
+    else if (s.runUsedPowerUp || s.runUsedShield) stars = 2;
 
-    // Keep best stars
     const newLevelStars = { ...s.levelStars };
     const prev = newLevelStars[s.currentLevel] || 0;
     newLevelStars[s.currentLevel] = Math.max(prev, stars);
@@ -170,12 +141,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     screen: 'playing',
     score: 0,
     coins: 0,
-    activePowerUps: [],
-    nextUpgradeAt: 500,
     lavaProximity: 0,
     phase: 1,
     screenShake: 0,
-    upgradeChoices: [],
     runUsedAd: false,
     runUsedPowerUp: false,
     runUsedShield: false,
