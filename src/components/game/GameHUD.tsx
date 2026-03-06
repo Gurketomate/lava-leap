@@ -1,13 +1,31 @@
 import { useGameStore } from '@/stores/gameStore';
 import { LEVELS } from '@/game/constants';
 import { useIsMobile } from '@/hooks/use-mobile';
+import type { ActiveEffect } from '@/game/types';
 
-const GameHUD = () => {
-  const { score, coins, lavaProximity, activePowerUps, screenShake, currentLevel } = useGameStore();
+const ITEM_ICONS: Record<string, string> = {
+  coinMagnet: '🧲',
+  lavaBrake: '❄️',
+  shield: '🛡️',
+  doubleJump: '🪶',
+};
+
+const ITEM_COLORS: Record<string, string> = {
+  coinMagnet: '#9b59b6',
+  lavaBrake: '#3498db',
+  shield: '#f1c40f',
+  doubleJump: '#ecf0f1',
+};
+
+interface GameHUDProps {
+  activeEffects?: ActiveEffect[];
+}
+
+const GameHUD = ({ activeEffects = [] }: GameHUDProps) => {
+  const { score, coins, lavaProximity, screenShake, currentLevel } = useGameStore();
   const levelDef = LEVELS.find(l => l.id === currentLevel);
   const progress = levelDef ? Math.min(1, score / levelDef.targetHeight) : 0;
   const isMobile = useIsMobile();
-  const hasDoubleJump = activePowerUps.some(pu => pu.type === 'doubleJump');
 
   return (
     <div className="absolute inset-0 pointer-events-none z-10" style={{
@@ -20,7 +38,6 @@ const GameHUD = () => {
             Level {currentLevel} — {levelDef?.name}
           </p>
           <p className="text-2xl font-display font-bold text-foreground">{score}<span className="text-sm text-muted-foreground">/{levelDef?.targetHeight}</span></p>
-          {/* Progress bar */}
           <div className="w-full h-1.5 bg-muted rounded-full mt-1 overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-300"
@@ -41,28 +58,37 @@ const GameHUD = () => {
         </div>
       </div>
 
-      {/* Active Power-ups */}
-      {activePowerUps.length > 0 && (
+      {/* Active Effects */}
+      {activeEffects.length > 0 && (
         <div className="absolute top-4 left-4 flex flex-col gap-1">
-          {activePowerUps.map((pu) => (
-            <div key={pu.type} className="glass-panel px-3 py-1 flex items-center gap-2 text-sm">
-              <span>{pu.icon}</span>
-              <span className="font-body text-foreground">{pu.stacks > 1 ? `x${pu.stacks}` : ''}</span>
-            </div>
-          ))}
+          {activeEffects.map((effect) => {
+            const pct = effect.remaining / effect.duration;
+            return (
+              <div key={effect.type} className="glass-panel px-3 py-1 flex items-center gap-2 text-sm">
+                <span>{ITEM_ICONS[effect.type] || '?'}</span>
+                <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.15)' }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-200"
+                    style={{
+                      width: `${pct * 100}%`,
+                      background: ITEM_COLORS[effect.type] || '#fff',
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
       {/* Double Jump Hint */}
-      {hasDoubleJump && (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
-          <div className="glass-panel px-4 py-1.5 text-xs text-muted-foreground font-body animate-pulse">
-            {isMobile ? '📱 Tap for Double Jump' : '⌨️ SPACE for Double Jump'}
-          </div>
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+        <div className="glass-panel px-4 py-1.5 text-xs text-muted-foreground font-body">
+          {isMobile ? '📱 Tap for Double Jump' : '⌨️ SPACE for Double Jump'}
         </div>
-      )}
+      </div>
 
-      {/* Heat Bar (Lava proximity) */}
+      {/* Heat Bar */}
       <div className="absolute bottom-0 left-0 w-full h-2">
         <div
           className="h-full transition-all duration-300"
@@ -74,7 +100,6 @@ const GameHUD = () => {
         />
       </div>
 
-      {/* Side heat glow */}
       {lavaProximity > 0.3 && (
         <div
           className="absolute inset-0 pointer-events-none animate-pulse-lava"

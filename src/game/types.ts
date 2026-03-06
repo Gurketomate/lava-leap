@@ -59,6 +59,22 @@ export interface PowerUp {
   stacks: number;
 }
 
+export type ItemType = 'coinMagnet' | 'lavaBrake' | 'shield' | 'doubleJump';
+
+export interface ItemPickup {
+  x: number;
+  y: number;
+  type: ItemType;
+  collected: boolean;
+  platformIndex: number; // link to platform
+}
+
+export interface ActiveEffect {
+  type: ItemType;
+  remaining: number; // seconds remaining
+  duration: number;  // total duration
+}
+
 export interface PermanentUpgrade {
   id: string;
   name: string;
@@ -72,7 +88,7 @@ export interface PermanentUpgrade {
   effectUnit: string;
 }
 
-export type GameScreen = 'menu' | 'playing' | 'paused' | 'upgrade' | 'gameOver' | 'shop' | 'levelComplete' | 'levelSelect';
+export type GameScreen = 'menu' | 'playing' | 'paused' | 'gameOver' | 'shop' | 'levelComplete' | 'levelSelect';
 
 export interface LevelDefinition {
   id: number;
