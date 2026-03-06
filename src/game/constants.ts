@@ -261,35 +261,3 @@ export const PERMANENT_UPGRADES = [
   },
 ];
 
-export const POWER_UP_DEFINITIONS = [
-  {
-    type: 'doubleJump' as const,
-    name: 'Doppelsprung',
-    description: 'Springe ein zweites Mal in der Luft',
-    icon: '⬆️',
-  },
-  {
-    type: 'lavaSlow' as const,
-    name: 'Lava-Bremse',
-    description: 'Lava steigt 30% langsamer',
-    icon: '🌊',
-  },
-  {
-    type: 'coinMagnet' as const,
-    name: 'Münzmagnet',
-    description: 'Zieht Münzen automatisch an',
-    icon: '🧲',
-  },
-  {
-    type: 'shield' as const,
-    name: 'Schutzschild',
-    description: 'Überlebe 1x Lava-Kontakt',
-    icon: '🛡️',
-  },
-  {
-    type: 'platformStabilizer' as const,
-    name: 'Stabilisator',
-    description: 'Weniger brüchige Plattformen',
-    icon: '🔧',
-  },
-];
