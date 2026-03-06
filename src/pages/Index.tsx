@@ -3,7 +3,6 @@ import GameCanvas from '@/components/game/GameCanvas';
 import GameHUD from '@/components/game/GameHUD';
 import MainMenu from '@/components/game/MainMenu';
 import GameOverScreen from '@/components/game/GameOverScreen';
-import UpgradeMenu from '@/components/game/UpgradeMenu';
 import PermanentShop from '@/components/game/PermanentShop';
 import LevelCompleteScreen from '@/components/game/LevelCompleteScreen';
 import LevelSelectScreen from '@/components/game/LevelSelectScreen';
@@ -13,15 +12,14 @@ import { useAdStore } from '@/stores/adStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { GameEngine } from '@/game/GameEngine';
 import { LEVELS } from '@/game/constants';
-import { upgradeChosen } from '@/game/analytics';
 import { startMusic } from '@/game/SoundManager';
-import type { PowerUp } from '@/game/types';
+import type { ActiveEffect } from '@/game/types';
 
 const Index = () => {
   const store = useGameStore();
   const engineRef = useRef<GameEngine | null>(null);
-  const [upgradeChoices, setUpgradeChoices] = useState<PowerUp[]>([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [activeEffects, setActiveEffects] = useState<ActiveEffect[]>([]);
 
   const adStore = useAdStore();
 
@@ -51,7 +49,6 @@ const Index = () => {
     engine.setPermanentBonuses(bonuses.jumpBonus, bonuses.coinSpawnBonus, bonuses.lavaResistBonus, bonuses.startWithShield);
     engine.setLevel(levelDef);
 
-    // Track shield usage for star rating
     if (bonuses.startWithShield) {
       useGameStore.getState().markUsedShield();
     }
@@ -74,32 +71,18 @@ const Index = () => {
     engine.onGameOver = () => {
       useGameStore.getState().gameOver();
     };
-    engine.onUpgradeReady = (choices: PowerUp[]) => {
-      setUpgradeChoices(choices);
-      useGameStore.getState().setScreen('upgrade');
-    };
     engine.onLevelComplete = () => {
       useGameStore.getState().completeLevel();
+    };
+    engine.onActiveEffectsUpdate = (effects: ActiveEffect[]) => {
+      setActiveEffects([...effects]);
     };
 
     store.setCurrentLevel(levelId);
     store.resetRun();
+    setActiveEffects([]);
     engine.start();
   }, [store, getPermanentBonuses]);
-
-  const handleUpgradeSelect = useCallback((powerUp: PowerUp) => {
-    const engine = engineRef.current;
-    if (!engine) return;
-
-    engine.applyPowerUp(powerUp);
-    store.addPowerUp(powerUp);
-    store.markUsedPowerUp(); // Track for star rating
-    store.setNextUpgradeAt(engine.nextUpgradeAt);
-    upgradeChosen(powerUp.type);
-    setUpgradeChoices([]);
-    store.setScreen('playing');
-    engine.resume();
-  }, [store]);
 
   const handleRestart = useCallback(() => {
     adStore.recordDeath();
@@ -137,7 +120,7 @@ const Index = () => {
     <div className="fixed inset-0 bg-background overflow-hidden">
       <GameCanvas onReady={handleEngineReady} />
 
-      {store.screen === 'playing' && <GameHUD />}
+      {store.screen === 'playing' && <GameHUD activeEffects={activeEffects} />}
       {store.screen === 'menu' && (
         <MainMenu
           onStart={() => store.setScreen('levelSelect')}
@@ -152,7 +135,6 @@ const Index = () => {
         />
       )}
       {store.screen === 'gameOver' && <GameOverScreen onRestart={handleRestart} onMenu={handleMenu} onRevive={handleRevive} />}
-      {store.screen === 'upgrade' && <UpgradeMenu choices={upgradeChoices} onSelect={handleUpgradeSelect} />}
       {store.screen === 'shop' && <PermanentShop onBack={() => store.setScreen('menu')} />}
       {store.screen === 'levelComplete' && <LevelCompleteScreen onNextLevel={handleNextLevel} onMenu={handleMenu} />}
       {showSettings && <SettingsMenu onClose={() => setShowSettings(false)} />}

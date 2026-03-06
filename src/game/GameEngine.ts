@@ -1,17 +1,16 @@
-import type { Player, Platform, Coin, Particle, PowerUp, LevelDefinition } from './types';
+import type { Player, Platform, Coin, Particle, PowerUp, LevelDefinition, ItemPickup, ActiveEffect, ItemType } from './types';
 import {
   GRAVITY, JUMP_FORCE, BOOST_FORCE, MOVE_SPEED,
   PLAYER_WIDTH, PLAYER_HEIGHT,
   PLATFORM_WIDTH, PLATFORM_HEIGHT, PLATFORM_GAP_MIN, PLATFORM_GAP_MAX, PLATFORMS_BUFFER,
   LAVA_INITIAL_SPEED,
   COIN_RADIUS, COIN_SPAWN_CHANCE, COIN_MAGNET_RANGE,
-  CAMERA_SMOOTH, SCORE_SCALE, UPGRADE_INTERVAL,
-  POWER_UP_DEFINITIONS,
+  CAMERA_SMOOTH, SCORE_SCALE,
   COYOTE_TIME, JUMP_BUFFER_TIME, PLATFORM_HITBOX_PADDING,
   LAVA_TARGET_DISTANCE_RATIO, LAVA_PRESSURE_FACTOR,
   LAVA_MIN_SPEED, LAVA_ADAPTIVE_MAX_SPEED, LAVA_MERCY_SLOW, LAVA_MERCY_THRESHOLD,
   LAVA_SURGE_INTERVAL, LAVA_SURGE_DURATION, LAVA_SURGE_MULTIPLIER,
-  REWARD_PLATFORM_COIN_MULT, NO_SAFE_ZONE_INTERVAL, NO_SAFE_ZONE_DURATION,
+  NO_SAFE_ZONE_INTERVAL, NO_SAFE_ZONE_DURATION,
   SCREEN_SHAKE_MAX, getRewardCoinCount,
 } from './constants';
 import { computeReachability, isPlatformReachable, type ReachabilityLimits } from './reachability';
@@ -19,6 +18,16 @@ import { runStart, runEnd, deathCause } from './analytics';
 import { playJump, playCoin, playDeath, playPowerUp, playLevelComplete, startMusic, stopMusic, startLavaSound, stopLavaSound, updateLavaProximity } from './SoundManager';
 
 type Callback = (data: any) => void;
+
+// Item definitions
+const ITEM_DEFINITIONS: { type: ItemType; icon: string; color: string }[] = [
+  { type: 'coinMagnet', icon: '🧲', color: '#9b59b6' },
+  { type: 'lavaBrake', icon: '❄️', color: '#3498db' },
+  { type: 'shield', icon: '🛡️', color: '#f1c40f' },
+  { type: 'doubleJump', icon: '🪶', color: '#ecf0f1' },
+];
+
+const ITEM_SPAWN_CHANCE = 0.15;
 
 export class GameEngine {
   canvas: HTMLCanvasElement;
@@ -30,6 +39,8 @@ export class GameEngine {
   platforms: Platform[] = [];
   coins: Coin[] = [];
   particles: Particle[] = [];
+  items: ItemPickup[] = [];
+  activeEffects: ActiveEffect[] = [];
   cameraY = 0;
   lavaY = 0;
   lavaSpeed = LAVA_INITIAL_SPEED;
@@ -45,30 +56,25 @@ export class GameEngine {
   animId = 0;
   backgroundLayers: { offset: number; speed: number; shapes: { x: number; y: number; r: number }[] }[] = [];
 
-  // New platform effect timers
+  // Platform effect timers
   invincibleTimer = 0;
   isInvincible = false;
-  
-  // Smooth lava height modification (for ice platforms)
-  lavaHeightTarget = 0; // target delta to apply smoothly
-  lavaHeightSmooth = 0; // current smooth delta being applied
-  lavaHeightSmoothSpeed = 0; // units per second for smooth transition
-  
-  // Minimum lava Y — lava can never drop below initial position
-  lavaMinY = 0;
-  
-  lastPlatformType: string = 'normal'; // track to prevent consecutive danger
+
+  // Lava speed multiplier system
+  lavaSpeedMults: { mult: number; remaining: number; duration: number }[] = [];
+
+  lastPlatformType: string = 'normal';
 
   // Level system
   currentLevelDef: LevelDefinition | null = null;
   levelComplete = false;
   levelCompleteTimer = 0;
 
-  // Power-up state
+  // Power-up state (from items)
   hasDoubleJump = false;
-  lavaSlowStacks = 0;
   hasCoinMagnet = false;
   hasShield = false;
+  lavaSlowStacks = 0;
   platformStabilizerStacks = 0;
 
   // Permanent upgrade bonuses
@@ -77,7 +83,7 @@ export class GameEngine {
   lavaResistBonus = 0;
   startWithShield = false;
 
-  // Fairness assists (hidden)
+  // Fairness assists
   coyoteTimer = 0;
   jumpBufferTimer = 0;
   wasOnGround = false;
@@ -89,7 +95,7 @@ export class GameEngine {
   // Analytics
   runStartTime = 0;
 
-  // Phase tracking (within level)
+  // Phase tracking
   elapsedTime = 0;
 
   // No-safe-zone
@@ -109,26 +115,24 @@ export class GameEngine {
   doubleJumpFlashTimer = 0;
 
   // Revive grace state
-  reviveGraceTimer = 0;      // invulnerability countdown
-  reviveInputLockTimer = 0;  // input lock countdown
-  reviveLavaPauseTimer = 0;  // lava pause countdown
+  reviveGraceTimer = 0;
+  reviveInputLockTimer = 0;
+  reviveLavaPauseTimer = 0;
 
   // Shield rebound grace state
-  shieldGraceTimer = 0;      // 0.5s invulnerability after shield break
-  shieldInputLockTimer = 0;  // 0.2s input lock after rebound
-  shieldLavaPauseTimer = 0;  // 0.3s lava pause after shield break
+  shieldGraceTimer = 0;
+  shieldInputLockTimer = 0;
+  shieldLavaPauseTimer = 0;
 
   // Callbacks
   onScoreUpdate: Callback = () => {};
   onCoinCollect: Callback = () => {};
   onGameOver: Callback = () => {};
-  onUpgradeReady: Callback = () => {};
   onLavaProximity: Callback = () => {};
   onPhaseChange: Callback = () => {};
   onScreenShake: Callback = () => {};
   onLevelComplete: Callback = () => {};
-
-  nextUpgradeAt = UPGRADE_INTERVAL;
+  onActiveEffectsUpdate: Callback = () => {};
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -177,14 +181,12 @@ export class GameEngine {
     this.currentLevelDef = levelDef;
   }
 
-  /** Pick platform type based on current level definition */
   pickPlatformType(): Platform['type'] {
     const level = this.currentLevelDef;
     if (!level) return 'normal';
 
     const stabilizerReduction = this.platformStabilizerStacks * 0.05;
 
-    // In no-safe-zone, only hard platforms
     if (this.inNoSafeZone) {
       const r = Math.random();
       if (r < 0.25) return 'moving';
@@ -201,29 +203,21 @@ export class GameEngine {
 
     cumulative += level.boostChance;
     if (r < cumulative) return 'boost';
-
     cumulative += level.rewardChance;
     if (r < cumulative) return 'reward';
-
     cumulative += level.lavaControlChance;
     if (r < cumulative) return 'lavaControl';
-
     cumulative += level.dangerChance;
     if (r < cumulative) {
-      // Never spawn 2 danger platforms consecutively
       if (this.lastPlatformType === 'danger') return 'normal';
       return 'danger';
     }
-
     cumulative += level.invincibleChance;
     if (r < cumulative) return 'invincible';
-
     cumulative += level.vanishingChance;
     if (r < cumulative) return 'vanishing';
-
     cumulative += level.movingChance;
     if (r < cumulative) return 'moving';
-
     cumulative += breakable;
     if (r < cumulative) return 'breakable';
 
@@ -244,7 +238,9 @@ export class GameEngine {
     this.platforms = [];
     this.coins = [];
     this.particles = [];
-    this.nextUpgradeAt = UPGRADE_INTERVAL;
+    this.items = [];
+    this.activeEffects = [];
+    this.lavaSpeedMults = [];
     this.hasDoubleJump = false;
     this.lavaSlowStacks = 0;
     this.hasCoinMagnet = false;
@@ -267,10 +263,6 @@ export class GameEngine {
     this.doubleJumpFlashTimer = 0;
     this.invincibleTimer = 0;
     this.isInvincible = false;
-    this.lavaHeightTarget = 0;
-    this.lavaHeightSmooth = 0;
-    this.lavaHeightSmoothSpeed = 0;
-    this.lavaMinY = this.height + 100; // initial lava position = minimum
     this.lastPlatformType = 'normal';
     this.levelComplete = false;
     this.levelCompleteTimer = 0;
@@ -317,28 +309,22 @@ export class GameEngine {
   }
 
   setInput(dir: number) {
-    // Block input during revive input lock
     if (this.reviveInputLockTimer > 0) return;
     this.inputDir = dir;
   }
 
-  /** Revive: respawn on last safe platform with grace period */
   revive() {
     const p = this.player;
-
-    // Find the highest non-broken platform that is below or near the player
     const safePlatforms = this.platforms
       .filter(pl => !pl.broken && pl.type !== 'breakable' && pl.type !== 'vanishing'
         && (pl.visible !== false) && pl.y > this.cameraY - 100)
-      .sort((a, b) => a.y - b.y); // sort by Y ascending (highest first)
+      .sort((a, b) => a.y - b.y);
 
     const lastSafe = safePlatforms.length > 0 ? safePlatforms[0] : null;
-
     if (lastSafe) {
       p.x = lastSafe.x + lastSafe.width / 2 - p.width / 2;
       p.y = lastSafe.y - p.height;
     } else {
-      // Fallback: spawn a platform under player
       const platW = 100;
       const spawnY = p.y + 20;
       const spawnX = Math.max(0, Math.min(this.width - platW, p.x));
@@ -350,7 +336,6 @@ export class GameEngine {
       p.y = spawnY - p.height;
     }
 
-    // Reset physics
     p.vx = 0;
     p.vy = 0;
     p.doubleJumpUsed = false;
@@ -360,21 +345,13 @@ export class GameEngine {
     this.jumpRequested = false;
     this.jumpBufferTimer = 0;
 
-    // Push lava down to safe distance
     this.lavaY = Math.max(this.lavaY, p.y + this.height * 0.5);
-
-    // Set grace timers
     this.reviveGraceTimer = 0.75;
     this.reviveInputLockTimer = 0.3;
     this.reviveLavaPauseTimer = 0.5;
-
-    // Stabilize camera immediately
     this.cameraY = p.y - this.height * 0.35;
-
-    // Visual feedback
     this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00ff88', 15);
 
-    // Resume engine
     this.running = true;
     this.paused = false;
     this.lastTime = performance.now();
@@ -383,6 +360,38 @@ export class GameEngine {
     this.loop(this.lastTime);
   }
 
+  /** Apply item pickup effect */
+  applyItemEffect(type: ItemType) {
+    playPowerUp();
+    switch (type) {
+      case 'coinMagnet':
+        this.hasCoinMagnet = true;
+        this.addActiveEffect('coinMagnet', 6);
+        break;
+      case 'lavaBrake':
+        this.lavaSpeedMults.push({ mult: 0.4, remaining: 5, duration: 5 });
+        this.addActiveEffect('lavaBrake', 5);
+        break;
+      case 'shield':
+        this.hasShield = true;
+        // Shield lasts until used, no timer
+        break;
+      case 'doubleJump':
+        this.hasDoubleJump = true;
+        this.player.doubleJumpUsed = false;
+        // Lasts until next landing after use
+        break;
+    }
+  }
+
+  addActiveEffect(type: ItemType, duration: number) {
+    // Remove existing same-type effect and replace
+    this.activeEffects = this.activeEffects.filter(e => e.type !== type);
+    this.activeEffects.push({ type, remaining: duration, duration });
+    this.onActiveEffectsUpdate(this.activeEffects);
+  }
+
+  /** Legacy compatibility for permanent shop upgrades */
   applyPowerUp(powerUp: PowerUp) {
     playPowerUp();
     switch (powerUp.type) {
@@ -392,11 +401,6 @@ export class GameEngine {
       case 'shield': this.hasShield = true; break;
       case 'platformStabilizer': this.platformStabilizerStacks++; break;
     }
-  }
-
-  getRandomUpgradeChoices(): PowerUp[] {
-    const shuffled = [...POWER_UP_DEFINITIONS].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, 2).map((d) => ({ ...d, stacks: 1 }));
   }
 
   generatePlatformsUpTo(targetY: number) {
@@ -410,18 +414,14 @@ export class GameEngine {
       let newX = Math.random() * (this.width - PLATFORM_WIDTH);
 
       let type = this.pickPlatformType();
-      
-      // Danger platforms: never spawn too close to lava
       if (type === 'danger' && newY > this.lavaY - 200) {
         type = 'normal';
       }
-      
       this.lastPlatformType = type;
 
       const baseWidth = PLATFORM_WIDTH + (type === 'normal' ? Math.random() * 20 : 0);
       const platWidth = baseWidth * widthMod;
 
-      // Reachability validation
       const sourcePlat = lastPlatform || this.platforms[this.platforms.length - 1];
       if (sourcePlat) {
         let attempts = 0;
@@ -456,29 +456,23 @@ export class GameEngine {
 
       if (type === 'vanishing') {
         platform.vanishTimer = 0;
-        platform.vanishDuration = 2.0 + Math.random() * 1.5; // 2-3.5s visible
+        platform.vanishDuration = 2.0 + Math.random() * 1.5;
         platform.visible = true;
       }
 
-      // For reward platforms: make them genuinely harder + spawn a safe alternative
+      // Reward platforms: narrower + harder
       if (type === 'reward') {
-        // Narrow the risk platform significantly
         platform.width = Math.max(30, platWidth * 0.55);
-        // Always make it moving or breakable for extra difficulty
         if (Math.random() < 0.6) {
           platform.moveSpeed = 60 + Math.random() * 70;
           platform.moveRange = 50 + Math.random() * 70;
           platform.moveDir = Math.random() > 0.5 ? 1 : -1;
           platform.originX = newX;
         } else {
-          // Make it breakable instead
-          platform.type = 'reward'; // keep reward type for coins
-          platform.breakTimer = 0.4; // short break timer for pressure
+          platform.breakTimer = 0.4;
         }
-        // Offset risk platform slightly higher to require a harder jump
         platform.y -= 8 + Math.random() * 12;
 
-        // Spawn safe alternative within 150px horizontal — wider, stable, fewer coins
         const safeWidth = (PLATFORM_WIDTH + 20) * widthMod;
         let safeX: number;
         if (newX > this.width / 2) {
@@ -487,14 +481,12 @@ export class GameEngine {
           safeX = Math.min(this.width - safeWidth, newX + platWidth + 40 + Math.random() * 60);
         }
         const safeY = newY + (Math.random() * 10 - 3);
-        const safePlatform: Platform = {
+        this.platforms.push({
           x: safeX, y: safeY,
           width: safeWidth, height: PLATFORM_HEIGHT,
           type: 'normal', broken: false,
-        };
-        this.platforms.push(safePlatform);
+        });
 
-        // Add 2 coins on the safe platform (vs full reward on risk)
         for (let sc = 0; sc < 2; sc++) {
           this.coins.push({
             x: safeX + safeWidth / 2 + (sc - 0.5) * 18,
@@ -507,12 +499,11 @@ export class GameEngine {
       }
 
       this.platforms.push(platform);
+      const platIndex = this.platforms.length - 1;
 
       // Coin spawning
       const rewardCoins = getRewardCoinCount(levelId);
-      const coinChance = type === 'reward'
-        ? 1.0
-        : COIN_SPAWN_CHANCE + this.coinSpawnBonus;
+      const coinChance = type === 'reward' ? 1.0 : COIN_SPAWN_CHANCE + this.coinSpawnBonus;
       if (Math.random() < coinChance) {
         const coinCount = type === 'reward' ? rewardCoins : 1;
         for (let c = 0; c < coinCount; c++) {
@@ -522,6 +513,20 @@ export class GameEngine {
             radius: COIN_RADIUS,
             collected: false,
             angle: 0,
+          });
+        }
+      }
+
+      // Item pickup spawning (~15% of normal/moving/breakable platforms, not special)
+      if (['normal', 'moving', 'breakable'].includes(type) && newY < this.lavaY - 300) {
+        if (Math.random() < ITEM_SPAWN_CHANCE) {
+          const itemDef = ITEM_DEFINITIONS[Math.floor(Math.random() * ITEM_DEFINITIONS.length)];
+          this.items.push({
+            x: newX + platWidth / 2,
+            y: newY - 30,
+            type: itemDef.type,
+            collected: false,
+            platformIndex: platIndex,
           });
         }
       }
@@ -536,7 +541,6 @@ export class GameEngine {
     // Level complete animation
     if (this.levelComplete) {
       this.levelCompleteTimer += dt;
-      // Slowly pan camera up for 1.5s, then trigger callback
       const targetCameraY = this.player.y - this.height * 0.4;
       this.cameraY += (targetCameraY - this.cameraY) * 0.03;
       if (this.levelCompleteTimer > 1.5) {
@@ -548,32 +552,36 @@ export class GameEngine {
 
     this.elapsedTime += dt;
 
-    // Smooth lava height modification (ice platforms)
-    if (this.lavaHeightSmooth !== this.lavaHeightTarget) {
-      const diff = this.lavaHeightTarget - this.lavaHeightSmooth;
-      const step = this.lavaHeightSmoothSpeed * dt;
-      if (Math.abs(diff) <= step) {
-        const delta = this.lavaHeightTarget - this.lavaHeightSmooth;
-        this.lavaY += delta;
-        this.lavaHeightSmooth = this.lavaHeightTarget;
-      } else {
-        const delta = Math.sign(diff) * step;
-        this.lavaY += delta;
-        this.lavaHeightSmooth += delta;
-      }
-      // Clamp: lava can never go below initial spawn
-      this.lavaY = Math.min(this.lavaY, this.lavaMinY);
+    // Update lava speed multiplier timers
+    for (const m of this.lavaSpeedMults) {
+      m.remaining -= dt;
     }
+    this.lavaSpeedMults = this.lavaSpeedMults.filter(m => m.remaining > 0);
 
-    // Revive grace timers
+    // Update active effects timers
+    let effectsChanged = false;
+    for (const e of this.activeEffects) {
+      e.remaining -= dt;
+    }
+    const beforeLen = this.activeEffects.length;
+    this.activeEffects = this.activeEffects.filter(e => {
+      if (e.remaining <= 0) {
+        // Effect expired — clean up
+        if (e.type === 'coinMagnet') this.hasCoinMagnet = false;
+        return false;
+      }
+      return true;
+    });
+    if (this.activeEffects.length !== beforeLen) effectsChanged = true;
+    if (effectsChanged) this.onActiveEffectsUpdate(this.activeEffects);
+
+    // Grace timers
     if (this.reviveGraceTimer > 0) this.reviveGraceTimer -= dt;
     if (this.reviveInputLockTimer > 0) {
       this.reviveInputLockTimer -= dt;
-      this.inputDir = 0; // force no movement
+      this.inputDir = 0;
     }
     if (this.reviveLavaPauseTimer > 0) this.reviveLavaPauseTimer -= dt;
-
-    // Shield rebound grace timers
     if (this.shieldGraceTimer > 0) this.shieldGraceTimer -= dt;
     if (this.shieldInputLockTimer > 0) {
       this.shieldInputLockTimer -= dt;
@@ -597,18 +605,13 @@ export class GameEngine {
       }
     }
 
-    // Double jump flash decay
     if (this.doubleJumpFlashTimer > 0) this.doubleJumpFlashTimer -= dt;
 
     const p = this.player;
 
     // Gravity
     p.vy += GRAVITY * dt;
-
-    // Horizontal input
     p.vx = this.inputDir * MOVE_SPEED;
-
-    // Update position
     p.x += p.vx * dt;
     p.y += p.vy * dt;
 
@@ -616,11 +619,11 @@ export class GameEngine {
     if (p.x + p.width < 0) p.x = this.width;
     if (p.x > this.width) p.x = -p.width;
 
-    // Fairness: coyote timer
+    // Coyote time
     if (this.wasOnGround && p.vy > 0) this.coyoteTimer += dt;
     if (this.coyoteTimer > COYOTE_TIME) { this.wasOnGround = false; this.coyoteTimer = 0; }
 
-    // Fairness: jump buffer
+    // Jump buffer
     if (this.jumpRequested) {
       this.jumpBufferTimer += dt;
       if (this.jumpBufferTimer > JUMP_BUFFER_TIME) { this.jumpRequested = false; this.jumpBufferTimer = 0; }
@@ -630,7 +633,6 @@ export class GameEngine {
     if (p.vy > 0) {
       for (const plat of this.platforms) {
         if (plat.broken) continue;
-        // Skip vanishing platforms that are invisible
         if (plat.type === 'vanishing' && plat.visible === false) continue;
 
         const platLeft = plat.x - PLATFORM_HITBOX_PADDING;
@@ -652,27 +654,18 @@ export class GameEngine {
             this.spawnParticles(plat.x + plat.width / 2, plat.y, plat.type === 'reward' ? '#ffd700' : '#888888', 8);
             playJump(0.5);
           } else if (plat.type === 'lavaControl') {
-            // Blue ice platform — permanently lower lava smoothly over 0.4s
+            // Blue ice platform — slow lava by 40% for 4 seconds
             this.performJump('normal', 1.0);
-            const lavaDropUnits = PLATFORM_HEIGHT * 1.5 + 10; // ~31 units
-            this.lavaHeightTarget += lavaDropUnits; // positive = lava goes down
-            this.lavaHeightSmoothSpeed = lavaDropUnits / 0.4; // over 0.4s
+            this.lavaSpeedMults.push({ mult: 0.6, remaining: 4, duration: 4 });
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#00ccff', 10);
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#88ddff', 6);
             this.screenShake = 0.15;
             plat.broken = true;
             playJump(0.7);
           } else if (plat.type === 'danger') {
-            // Red danger platform — permanently raise lava
+            // Red danger platform — speed up lava by 40% for 4 seconds
             this.performJump('normal', 1.0);
-            const lavaRiseUnits = PLATFORM_HEIGHT * 1.5 + 10; // ~31 units
-            // Directly raise lava (decrease lavaY) but not instant — smooth over 0.6s
-            this.lavaY -= lavaRiseUnits;
-            // Safety: ensure lava doesn't instantly kill (keep at least 2 platform gaps away)
-            const minSafeDist = PLATFORM_GAP_MIN * 2;
-            if (this.lavaY < p.y + p.height + minSafeDist) {
-              this.lavaY = p.y + p.height + minSafeDist;
-            }
+            this.lavaSpeedMults.push({ mult: 1.4, remaining: 4, duration: 4 });
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ff3333', 10);
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ff6600', 6);
             this.screenShake = 0.3;
@@ -695,27 +688,23 @@ export class GameEngine {
           }
 
           p.y = plat.y - p.height;
-          // Jump state already reset by performJump()
           break;
         }
       }
     }
 
-    // Moving platforms — bounded movement
+    // Moving platforms
     for (const plat of this.platforms) {
       if (plat.type === 'moving' && !plat.broken && plat.originX !== undefined) {
         plat.x += (plat.moveDir || 1) * (plat.moveSpeed || 60) * dt;
         const range = plat.moveRange || 80;
-        // Reverse at range bounds
         if (plat.x > plat.originX + range || plat.x < plat.originX - range) {
           plat.moveDir = -(plat.moveDir || 1);
           plat.x = Math.max(plat.originX - range, Math.min(plat.originX + range, plat.x));
         }
-        // Hard clamp to screen bounds — never leave play area
         plat.x = Math.max(0, Math.min(this.width - plat.width, plat.x));
       }
 
-      // Reward platforms that also move — same bounds
       if (plat.type === 'reward' && !plat.broken && plat.originX !== undefined && plat.moveSpeed) {
         plat.x += (plat.moveDir || 1) * (plat.moveSpeed || 60) * dt;
         const range = plat.moveRange || 70;
@@ -726,12 +715,10 @@ export class GameEngine {
         plat.x = Math.max(0, Math.min(this.width - plat.width, plat.x));
       }
 
-      // Breakable platform respawn after 4 seconds
       if ((plat.type === 'breakable') && plat.broken) {
         if (plat.breakTimer === undefined) plat.breakTimer = 4.0;
         plat.breakTimer -= dt;
         if (plat.breakTimer <= 0) {
-          // Respawn at original position if still in valid range
           if (plat.y > this.cameraY - 50 && plat.y < this.lavaY - 50) {
             plat.broken = false;
             plat.breakTimer = undefined;
@@ -739,7 +726,6 @@ export class GameEngine {
         }
       }
 
-      // Vanishing platforms countdown
       if (plat.type === 'vanishing' && !plat.broken && plat.vanishTimer !== undefined && plat.vanishTimer > 0) {
         plat.vanishTimer -= dt;
         if (plat.vanishTimer <= 0) {
@@ -750,14 +736,25 @@ export class GameEngine {
       }
     }
 
-    // === SAFETY CHECK: ensure at least one reachable platform exists ===
     this.ensureReachablePlatform();
 
     // Invincibility timer
     if (this.isInvincible) {
       this.invincibleTimer -= dt;
-      if (this.invincibleTimer <= 0) {
-        this.isInvincible = false;
+      if (this.invincibleTimer <= 0) this.isInvincible = false;
+    }
+
+    // Item pickup collision
+    for (const item of this.items) {
+      if (item.collected) continue;
+      const dx = (p.x + p.width / 2) - item.x;
+      const dy = (p.y + p.height / 2) - item.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 25) {
+        item.collected = true;
+        this.applyItemEffect(item.type);
+        const def = ITEM_DEFINITIONS.find(d => d.type === item.type);
+        this.spawnParticles(item.x, item.y, def?.color || '#fff', 10);
       }
     }
 
@@ -767,21 +764,20 @@ export class GameEngine {
       this.cameraY += (targetCameraY - this.cameraY) * CAMERA_SMOOTH * 60 * dt;
     }
 
-    // === ADAPTIVE LAVA SYSTEM ===
+    // === ADAPTIVE LAVA SYSTEM (speed-based) ===
     const lavaSlowMult = Math.pow(0.7, this.lavaSlowStacks);
     const levelSpeedMod = this.currentLevelDef?.lavaSpeedMod ?? 1;
 
-    // End-of-level lava acceleration (last 20% of target height)
     let endAccel = 1;
     if (this.currentLevelDef) {
       const progress = this.score / this.currentLevelDef.targetHeight;
       if (progress > 0.8) {
-        const endProgress = (progress - 0.8) / 0.2; // 0-1
+        const endProgress = (progress - 0.8) / 0.2;
         endAccel = 1 + (this.currentLevelDef.lavaEndAccel - 1) * endProgress;
       }
     }
 
-    // Lava surge timer
+    // Lava surge
     if (!this.inLavaSurge) {
       this.lavaSurgeTimer -= dt;
       if (this.lavaSurgeTimer <= 0) {
@@ -796,45 +792,41 @@ export class GameEngine {
       }
     }
 
-    // Target distance = 30% of screen height
     const targetDistance = this.height * LAVA_TARGET_DISTANCE_RATIO;
     const currentDistance = this.lavaY - (p.y + p.height);
     const mercyDist = this.height * LAVA_MERCY_THRESHOLD;
 
-    // Base speed uses level speed mod + end accel
     const baseSpeed = LAVA_INITIAL_SPEED * levelSpeedMod * endAccel * (1 - this.lavaResistBonus);
-
-    // Adaptive: accelerate/decelerate based on distance vs target
     let adaptiveSpeed = baseSpeed + (currentDistance - targetDistance) * LAVA_PRESSURE_FACTOR;
 
-    // Mercy: if player is very close, slow down
-    if (currentDistance < mercyDist) {
-      adaptiveSpeed *= LAVA_MERCY_SLOW;
-    }
-
-    // Surge bonus
-    if (this.inLavaSurge) {
-      adaptiveSpeed *= LAVA_SURGE_MULTIPLIER;
-    }
-
-    // Apply lava slow power-up
+    if (currentDistance < mercyDist) adaptiveSpeed *= LAVA_MERCY_SLOW;
+    if (this.inLavaSurge) adaptiveSpeed *= LAVA_SURGE_MULTIPLIER;
     adaptiveSpeed *= lavaSlowMult;
 
-    // Clamp
+    // Apply platform-based and item-based speed multipliers (smooth blend)
+    let platformSpeedMult = 1;
+    for (const m of this.lavaSpeedMults) {
+      // Smooth transition: fade in/out over 0.5s
+      const fadeIn = Math.min(1, (m.duration - m.remaining) / 0.5);
+      const fadeOut = Math.min(1, m.remaining / 0.5);
+      const blend = Math.min(fadeIn, fadeOut);
+      platformSpeedMult *= 1 + (m.mult - 1) * blend;
+    }
+    adaptiveSpeed *= platformSpeedMult;
+
     adaptiveSpeed = Math.max(LAVA_MIN_SPEED * lavaSlowMult, Math.min(LAVA_ADAPTIVE_MAX_SPEED, adaptiveSpeed));
 
     this.lavaSpeed = adaptiveSpeed;
-    // Pause lava during revive or shield grace
     if (this.reviveLavaPauseTimer <= 0 && this.shieldLavaPauseTimer <= 0) {
       this.lavaY -= adaptiveSpeed * dt;
     }
 
-    // Lava proximity (0 = far, 1 = touching)
+    // Lava proximity
     const proximity = 1 - Math.min(1, Math.max(0, currentDistance / (this.height * 0.5)));
     this.onLavaProximity(proximity);
     updateLavaProximity(proximity);
 
-    // Screen shake based on proximity
+    // Screen shake
     this.screenShake = proximity > 0.6 ? (proximity - 0.6) * 2.5 : 0;
     this.onScreenShake(this.screenShake);
 
@@ -843,7 +835,7 @@ export class GameEngine {
     this.score = Math.floor(heightReached / SCORE_SCALE);
     this.onScoreUpdate(this.score);
 
-    // Level complete check
+    // Level complete
     if (this.currentLevelDef && this.score >= this.currentLevelDef.targetHeight && !this.levelComplete) {
       this.levelComplete = true;
       this.levelCompleteTimer = 0;
@@ -851,14 +843,6 @@ export class GameEngine {
       stopMusic();
       stopLavaSound();
       playLevelComplete();
-      return;
-    }
-
-    // Upgrade check
-    if (this.score >= this.nextUpgradeAt) {
-      this.nextUpgradeAt += UPGRADE_INTERVAL;
-      this.pause();
-      this.onUpgradeReady(this.getRandomUpgradeChoices());
       return;
     }
 
@@ -894,12 +878,12 @@ export class GameEngine {
       return part.life > 0;
     });
 
-    // Generate more platforms
     this.generatePlatformsUpTo(this.cameraY - PLATFORMS_BUFFER);
 
     // Cleanup
     this.platforms = this.platforms.filter((pl) => pl.y < this.lavaY + 100);
     this.coins = this.coins.filter((c) => !c.collected && c.y < this.lavaY + 100);
+    this.items = this.items.filter((i) => !i.collected && i.y < this.lavaY + 100);
 
     // Game over checks
     if (p.y + p.height > this.lavaY) {
@@ -914,7 +898,6 @@ export class GameEngine {
         p.vy = -JUMP_FORCE * 0.5;
         p.y = this.lavaY - p.height - 5;
       } else if (this.hasShield || this.isInvincible) {
-        // Unified shield rebound — works for purchased shield AND star-platform shield
         this.activateShieldRebound();
       } else {
         this.running = false;
@@ -946,11 +929,8 @@ export class GameEngine {
     }
   }
 
-  /** Unified shield rebound — used by BOTH purchased shield and star-platform invincibility */
   activateShieldRebound() {
     const p = this.player;
-
-    // Consume the shield (purchased or invincible)
     if (this.hasShield) {
       this.hasShield = false;
     } else if (this.isInvincible) {
@@ -958,48 +938,37 @@ export class GameEngine {
       this.invincibleTimer = 0;
     }
 
-    // Position above lava
     p.vx = 0;
     p.y = Math.min(p.y, this.lavaY - p.height - 5);
-
-    // Use unified jump with shield rebound priority (1.4x)
     this.performJump('shieldRebound', 1.4);
-    console.log('[Jump] Shield Rebound (1.40x)');
 
-    // Grace timers — invulnerability, input lock, lava pause
     this.shieldGraceTimer = 0.5;
     this.shieldInputLockTimer = 0.2;
     this.shieldLavaPauseTimer = 0.3;
-
-    // Visual & audio feedback
     this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00aaff', 18);
     this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ffffff', 8);
     this.screenShake = 0.4;
     playPowerUp();
   }
 
-  /** Safety check: ensure at least one reachable platform exists above the player */
   ensureReachablePlatform() {
     const p = this.player;
     const visibleTop = this.cameraY - 50;
     const visibleBottom = this.cameraY + this.height + 50;
 
-    // Find active platforms in the visible/near range above the player
     const activePlatforms = this.platforms.filter(
       pl => !pl.broken && (pl.visible !== false) &&
         pl.y >= visibleTop && pl.y <= visibleBottom
     );
 
-    // Check if any platform is reachable from the player's current position
     const hasReachable = activePlatforms.some(pl => {
       const vertDist = p.y - pl.y;
-      if (vertDist < -50) return false; // platform below player by a lot
+      if (vertDist < -50) return false;
       if (vertDist > this.reachability.safeVerticalDist) return false;
       return true;
     });
 
     if (!hasReachable && activePlatforms.length < 3) {
-      // Spawn a safety platform above the player
       const safeY = p.y - 60 - Math.random() * 40;
       const safeW = PLATFORM_WIDTH * 1.2;
       const safeX = Math.max(10, Math.min(this.width - safeW - 10, p.x - safeW / 2 + (Math.random() - 0.5) * 60));
@@ -1034,7 +1003,6 @@ export class GameEngine {
 
     ctx.save();
 
-    // Screen shake
     if (this.screenShake > 0) {
       const shakeX = (Math.random() - 0.5) * SCREEN_SHAKE_MAX * this.screenShake;
       const shakeY = (Math.random() - 0.5) * SCREEN_SHAKE_MAX * this.screenShake;
@@ -1056,6 +1024,13 @@ export class GameEngine {
       if (coin.collected) continue;
       if (coin.y < this.cameraY - 50 || coin.y > this.cameraY + h + 50) continue;
       this.renderCoin(ctx, coin);
+    }
+
+    // Render item pickups
+    for (const item of this.items) {
+      if (item.collected) continue;
+      if (item.y < this.cameraY - 50 || item.y > this.cameraY + h + 50) continue;
+      this.renderItem(ctx, item);
     }
 
     this.renderPlayer(ctx);
@@ -1099,31 +1074,37 @@ export class GameEngine {
       ctx.shadowBlur = 0;
     }
 
-    // Lava edge glow overlay
+    // Lava edge glow overlay — intensity based on lava speed
     const distToLava = this.lavaY - (this.player.y + this.player.height);
     const prox = 1 - Math.min(1, Math.max(0, distToLava / 400));
+    
+    // Lava speed glow modifier: faster = brighter, slower = darker
+    const baseSpeedRef = LAVA_INITIAL_SPEED * (this.currentLevelDef?.lavaSpeedMod ?? 1);
+    const speedRatio = Math.min(2, this.lavaSpeed / Math.max(1, baseSpeedRef));
+    const glowIntensity = 0.5 + speedRatio * 0.5; // 0.5-1.5 range
+
     if (prox > 0.2) {
-      const intensity = (prox - 0.2) * 1.25;
-      const grad = ctx.createLinearGradient(0, h, 0, h - h * intensity * 0.5);
-      grad.addColorStop(0, `rgba(255, 40, 0, ${intensity * 0.35})`);
+      const intensity = (prox - 0.2) * 1.25 * glowIntensity;
+      const grad = ctx.createLinearGradient(0, h, 0, h - h * Math.min(1, intensity) * 0.5);
+      grad.addColorStop(0, `rgba(255, 40, 0, ${Math.min(1, intensity * 0.35)})`);
       grad.addColorStop(1, 'rgba(255, 40, 0, 0)');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
 
       const sideGrad = ctx.createLinearGradient(0, 0, w * 0.15, 0);
-      sideGrad.addColorStop(0, `rgba(255, 30, 0, ${intensity * 0.2})`);
+      sideGrad.addColorStop(0, `rgba(255, 30, 0, ${Math.min(1, intensity * 0.2)})`);
       sideGrad.addColorStop(1, 'rgba(255, 30, 0, 0)');
       ctx.fillStyle = sideGrad;
       ctx.fillRect(0, 0, w * 0.15, h);
 
       const sideGrad2 = ctx.createLinearGradient(w, 0, w * 0.85, 0);
-      sideGrad2.addColorStop(0, `rgba(255, 30, 0, ${intensity * 0.2})`);
+      sideGrad2.addColorStop(0, `rgba(255, 30, 0, ${Math.min(1, intensity * 0.2)})`);
       sideGrad2.addColorStop(1, 'rgba(255, 30, 0, 0)');
       ctx.fillStyle = sideGrad2;
       ctx.fillRect(w * 0.85, 0, w * 0.15, h);
 
       if (intensity > 0.4) {
-        ctx.globalAlpha = (intensity - 0.4) * 0.3;
+        ctx.globalAlpha = Math.min(1, (intensity - 0.4) * 0.3);
         const time = performance.now() / 1000;
         for (let i = 0; i < 3; i++) {
           const lineY = h - 30 - i * 40 + Math.sin(time * 2 + i) * 10;
@@ -1140,7 +1121,7 @@ export class GameEngine {
       }
     }
 
-    // No-safe-zone warning flash
+    // No-safe-zone warning
     if (this.inNoSafeZone) {
       const flash = Math.sin(performance.now() / 150) * 0.5 + 0.5;
       ctx.fillStyle = `rgba(255, 0, 0, ${flash * 0.08})`;
@@ -1165,19 +1146,17 @@ export class GameEngine {
       ctx.fillStyle = barGrad;
       ctx.fillRect(barX, barY + barH - fillH, barW, fillH);
 
-      // Goal marker
       ctx.fillStyle = 'rgba(255,255,255,0.5)';
       ctx.fillRect(barX - 2, barY - 2, barW + 4, 2);
     }
 
-    // Level complete flash
     if (this.levelComplete) {
       const alpha = Math.min(1, this.levelCompleteTimer * 0.8);
       ctx.fillStyle = `rgba(255, 215, 0, ${alpha * 0.15})`;
       ctx.fillRect(0, 0, w, h);
     }
 
-    ctx.restore(); // screen shake restore
+    ctx.restore();
   }
 
   renderBackground(ctx: CanvasRenderingContext2D) {
@@ -1196,7 +1175,6 @@ export class GameEngine {
   }
 
   renderPlatform(ctx: CanvasRenderingContext2D, plat: Platform) {
-    // Skip invisible vanishing platforms
     if (plat.type === 'vanishing' && plat.visible === false) return;
 
     const colors: Record<string, string> = {
@@ -1234,7 +1212,6 @@ export class GameEngine {
     ctx.beginPath();
     ctx.roundRect(plat.x, plat.y, plat.width, plat.height, 4);
     ctx.fill();
-
     ctx.shadowBlur = 0;
 
     if (plat.type === 'breakable') {
@@ -1287,7 +1264,6 @@ export class GameEngine {
     }
 
     if (plat.type === 'vanishing') {
-      // Flickering effect when about to vanish
       const timer = plat.vanishTimer ?? 0;
       if (timer > 0 && timer < 1.0) {
         const flicker = Math.sin(performance.now() / 80) * 0.5 + 0.5;
@@ -1299,6 +1275,37 @@ export class GameEngine {
       ctx.fillText('◌', plat.x + plat.width / 2, plat.y + 11);
       ctx.globalAlpha = 1;
     }
+  }
+
+  renderItem(ctx: CanvasRenderingContext2D, item: ItemPickup) {
+    const def = ITEM_DEFINITIONS.find(d => d.type === item.type);
+    if (!def) return;
+
+    const time = performance.now() / 1000;
+    const bobY = Math.sin(time * 3 + item.x) * 4;
+    const pulse = Math.sin(time * 4) * 0.2 + 0.8;
+
+    // Glow
+    ctx.shadowColor = def.color;
+    ctx.shadowBlur = 12 * pulse;
+
+    // Background circle
+    ctx.fillStyle = def.color + '40';
+    ctx.beginPath();
+    ctx.arc(item.x, item.y + bobY, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = def.color + '80';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Icon
+    ctx.shadowBlur = 0;
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(def.icon, item.x, item.y + bobY);
+    ctx.textBaseline = 'alphabetic';
   }
 
   renderCoin(ctx: CanvasRenderingContext2D, coin: Coin) {
@@ -1376,14 +1383,23 @@ export class GameEngine {
 
     if (lavaTop > this.cameraY + this.height + 50) return;
 
+    // Glow intensity based on lava speed
+    const baseSpeedRef = LAVA_INITIAL_SPEED * (this.currentLevelDef?.lavaSpeedMod ?? 1);
+    const speedRatio = Math.min(2, this.lavaSpeed / Math.max(1, baseSpeedRef));
+    const glowAlpha = 0.15 + speedRatio * 0.2; // 0.15 - 0.55
+
     const glowGrad = ctx.createLinearGradient(0, lavaTop - 80, 0, lavaTop);
     glowGrad.addColorStop(0, 'rgba(255, 60, 0, 0)');
-    glowGrad.addColorStop(1, 'rgba(255, 60, 0, 0.3)');
+    glowGrad.addColorStop(1, `rgba(255, 60, 0, ${glowAlpha})`);
     ctx.fillStyle = glowGrad;
     ctx.fillRect(0, lavaTop - 80, this.width, 80);
 
+    // Lava body color shifts with speed
+    const r1 = Math.min(255, Math.round(255 * (0.8 + speedRatio * 0.2)));
+    const g1 = Math.max(0, Math.round(69 - speedRatio * 20));
+
     const lavaGrad = ctx.createLinearGradient(0, lavaTop, 0, lavaBottom);
-    lavaGrad.addColorStop(0, '#ff4500');
+    lavaGrad.addColorStop(0, `rgb(${r1}, ${g1}, 0)`);
     lavaGrad.addColorStop(0.3, '#ff2200');
     lavaGrad.addColorStop(1, '#8b0000');
     ctx.fillStyle = lavaGrad;
@@ -1391,41 +1407,36 @@ export class GameEngine {
     ctx.beginPath();
     ctx.moveTo(0, lavaBottom);
     const time = performance.now() / 1000;
+    const waveAmp = 4 + speedRatio * 4; // faster = bigger waves
     for (let x = 0; x <= this.width; x += 5) {
-      const wave = Math.sin(x * 0.02 + time * 3) * 6 + Math.sin(x * 0.05 + time * 2) * 3;
+      const wave = Math.sin(x * 0.02 + time * 3) * waveAmp + Math.sin(x * 0.05 + time * 2) * (waveAmp * 0.5);
       ctx.lineTo(x, lavaTop + wave);
     }
     ctx.lineTo(this.width, lavaBottom);
     ctx.closePath();
     ctx.fill();
 
-    ctx.strokeStyle = '#ffaa00';
+    const edgeGlow = 10 + speedRatio * 10;
+    ctx.strokeStyle = `rgba(255, ${Math.round(100 + speedRatio * 70)}, 0, ${0.6 + speedRatio * 0.2})`;
     ctx.lineWidth = 2;
     ctx.shadowColor = '#ff6600';
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = edgeGlow;
     ctx.beginPath();
     for (let x = 0; x <= this.width; x += 5) {
-      const wave = Math.sin(x * 0.02 + time * 3) * 6 + Math.sin(x * 0.05 + time * 2) * 3;
+      const wave = Math.sin(x * 0.02 + time * 3) * waveAmp + Math.sin(x * 0.05 + time * 2) * (waveAmp * 0.5);
       if (x === 0) ctx.moveTo(x, lavaTop + wave); else ctx.lineTo(x, lavaTop + wave);
     }
     ctx.stroke();
     ctx.shadowBlur = 0;
   }
 
-  /**
-   * Unified jump controller — ALL jumps go through here.
-   * @param type - 'normal' | 'double' | 'boost' | 'shieldRebound'
-   * @param forceMult - multiplier on JUMP_FORCE (default 1.0)
-   */
   performJump(type: 'normal' | 'double' | 'boost' | 'shieldRebound', forceMult = 1.0) {
     const p = this.player;
     const baseForce = JUMP_FORCE * (1 + this.jumpBonus);
 
-    // Always reset vy before applying force for consistency
     p.vy = 0;
     p.vy = -baseForce * forceMult;
 
-    // Reset jump state on any landing-based jump
     if (type !== 'double') {
       p.doubleJumpUsed = false;
       this.wasOnGround = true;
@@ -1436,16 +1447,11 @@ export class GameEngine {
       this.jumpRequested = false;
       this.jumpBufferTimer = 0;
     }
-
-    console.log(`[Jump] ${type.charAt(0).toUpperCase() + type.slice(1)} Jump (force: ${forceMult.toFixed(2)}x)`);
   }
 
   doDoubleJump() {
-    // Shield rebound has highest priority — don't override it
     if (this.shieldGraceTimer > 0) return;
-    // Input lock check
     if (this.shieldInputLockTimer > 0 || this.reviveInputLockTimer > 0) return;
-    // Must be airborne
     if (this.wasOnGround) return;
 
     if (this.hasDoubleJump && !this.player.doubleJumpUsed) {

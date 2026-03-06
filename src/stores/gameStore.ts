@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { GameScreen, PowerUp } from '@/game/types';
+import type { GameScreen } from '@/game/types';
 import { PERMANENT_UPGRADES, LEVELS } from '@/game/constants';
 
 interface UpgradeLevels {
