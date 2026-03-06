@@ -21,7 +21,6 @@ export const COIN_MAGNET_RANGE = 150;
 export const CAMERA_SMOOTH = 0.08;
 export const SCORE_SCALE = 10; // pixels per point
 
-export const PLATFORM_GAP_MIN = 60;
 
 export const BREAKABLE_CHANCE_BASE = 0.15;
 export const MOVING_CHANCE_BASE = 0.1;
