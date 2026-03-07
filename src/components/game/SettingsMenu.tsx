@@ -79,7 +79,7 @@ const SettingsMenu = ({ onClose }: SettingsMenuProps) => {
           <button onClick={handleToggleSfx} className="flex items-center justify-between py-2 group">
             <div className="flex items-center gap-3">
               <Volume2 size={18} className="text-accent" />
-              <span className="font-body text-sm text-foreground">Soundeffekte</span>
+              <span className="font-body text-sm text-foreground">Sound Effects</span>
             </div>
             <TogglePill enabled={sfxEnabled} />
           </button>
