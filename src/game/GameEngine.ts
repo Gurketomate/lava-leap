@@ -64,6 +64,7 @@ export class GameEngine {
   coins: Coin[] = [];
   particles: Particle[] = [];
   items: ItemPickup[] = [];
+  platformsSinceLastItem = 0;
   activeEffects: ActiveEffect[] = [];
   cameraY = 0;
   lavaY = 0;
