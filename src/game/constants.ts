@@ -154,9 +154,9 @@ export const LEVELS: LevelDefinition[] = (() => {
     } else if (id <= 30) {
       // HARD tier
       const lt = (id - 16) / 14;
-      const hardNames = ['Todeskrater', 'Vulkangipfel', 'Obsidianbrücke', 'Flammentor', 'Kraterrand',
-        'Schattenfeuer', 'Lavafontäne', 'Glutregen', 'Schmelzofen', 'Feuerprobe',
-        'Magmastrom', 'Vulkanherz', 'Inferno', 'Feuersturm', 'Höllenschlund'];
+      const hardNames = ['Death Crater', 'Volcano Peak', 'Obsidian Bridge', 'Flame Gate', 'Crater Edge',
+        'Shadow Fire', 'Lava Fountain', 'Ember Rain', 'Smelter', 'Trial by Fire',
+        'Magma Stream', 'Volcano Heart', 'Inferno', 'Firestorm', 'Hell\'s Maw'];
       name = hardNames[id - 16];
       targetHeight = Math.floor(lerp(1300, 2500, lt));
       normalChance = lerp(0.33, 0.15, lt);
