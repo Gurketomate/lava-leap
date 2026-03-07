@@ -71,6 +71,8 @@ export class GameEngine {
   lavaSpeed = LAVA_INITIAL_SPEED;
   score = 0;
   coinCount = 0;
+  totalCoinsSpawned = 0;
+  runDeaths = 0;
   maxHeight = 0;
   startY = 0;
   highestPlatformY = 0;
@@ -260,6 +262,8 @@ export class GameEngine {
     this.lavaSpeed = LAVA_INITIAL_SPEED * (1 - this.lavaResistBonus);
     this.score = 0;
     this.coinCount = 0;
+    this.totalCoinsSpawned = 0;
+    this.runDeaths = 0;
     this.platforms = [];
     this.coins = [];
     this.particles = [];
@@ -532,6 +536,7 @@ export class GameEngine {
       const coinChance = type === 'reward' ? 1.0 : COIN_SPAWN_CHANCE + this.coinSpawnBonus;
       if (Math.random() < coinChance) {
         const coinCount = type === 'reward' ? rewardCoins : 1;
+        this.totalCoinsSpawned += coinCount;
         for (let c = 0; c < coinCount; c++) {
           this.coins.push({
             x: newX + platWidth / 2 + (c - Math.floor(coinCount / 2)) * 18,

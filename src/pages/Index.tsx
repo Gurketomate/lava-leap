@@ -49,10 +49,6 @@ const Index = () => {
     engine.setPermanentBonuses(bonuses.jumpBonus, bonuses.coinSpawnBonus, bonuses.lavaResistBonus, bonuses.startWithShield);
     engine.setLevel(levelDef);
 
-    if (bonuses.startWithShield) {
-      useGameStore.getState().markUsedShield();
-    }
-
     engine.onScoreUpdate = (score: number) => {
       useGameStore.getState().setScore(score);
     };
@@ -72,7 +68,12 @@ const Index = () => {
       useGameStore.getState().gameOver();
     };
     engine.onLevelComplete = () => {
-      useGameStore.getState().completeLevel();
+      const totalSpawned = engine.totalCoinsSpawned;
+      const collected = engine.coinCount;
+      const coinPercent = totalSpawned > 0 ? collected / totalSpawned : 0;
+      const gs = useGameStore.getState();
+      gs.setRunStats(engine.runDeaths, coinPercent);
+      gs.completeLevel();
     };
     engine.onActiveEffectsUpdate = (effects: ActiveEffect[]) => {
       setActiveEffects([...effects]);
@@ -107,7 +108,7 @@ const Index = () => {
   const handleRevive = useCallback(() => {
     const engine = engineRef.current;
     if (!engine) return;
-    store.markUsedAd();
+    engine.runDeaths++;
     store.setScreen('playing');
     engine.revive();
   }, [store]);

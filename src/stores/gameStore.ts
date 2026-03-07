@@ -24,9 +24,8 @@ interface GameStore {
   maxUnlockedLevel: number;
 
   // Star tracking per run
-  runUsedAd: boolean;
-  runUsedPowerUp: boolean;
-  runUsedShield: boolean;
+  runDeaths: number;
+  runCoinPercent: number;
   lastRunStars: number;
   levelStars: LevelStars;
 
@@ -37,9 +36,7 @@ interface GameStore {
   setPhase: (phase: number) => void;
   setScreenShake: (shake: number) => void;
   setCurrentLevel: (level: number) => void;
-  markUsedAd: () => void;
-  markUsedPowerUp: () => void;
-  markUsedShield: () => void;
+  setRunStats: (deaths: number, coinPercent: number) => void;
   completeLevel: () => void;
   gameOver: () => void;
   resetRun: () => void;
@@ -81,9 +78,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   screenShake: 0,
   currentLevel: 1,
   maxUnlockedLevel: 1,
-  runUsedAd: false,
-  runUsedPowerUp: false,
-  runUsedShield: false,
+  runDeaths: 0,
+  runCoinPercent: 0,
   lastRunStars: 0,
   levelStars: {},
 
@@ -95,9 +91,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setScreenShake: (screenShake) => set({ screenShake }),
   setCurrentLevel: (currentLevel) => set({ currentLevel }),
 
-  markUsedAd: () => set({ runUsedAd: true }),
-  markUsedPowerUp: () => set({ runUsedPowerUp: true }),
-  markUsedShield: () => set({ runUsedShield: true }),
+  setRunStats: (deaths, coinPercent) => set({ runDeaths: deaths, runCoinPercent: coinPercent }),
 
   completeLevel: () => {
     const s = get();
@@ -107,9 +101,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const newLevels = { ...s.upgradeLevels };
     if (newLevels['startShield'] > 0) newLevels['startShield'] = 0;
 
-    let stars = 3;
-    if (s.runUsedAd) stars = 1;
-    else if (s.runUsedPowerUp || s.runUsedShield) stars = 2;
+    let stars = 1;
+    if (s.runCoinPercent >= 0.85 && s.runDeaths === 0) stars = 3;
+    else if (s.runCoinPercent >= 0.60) stars = 2;
 
     const newLevelStars = { ...s.levelStars };
     const prev = newLevelStars[s.currentLevel] || 0;
@@ -144,9 +138,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     lavaProximity: 0,
     phase: 1,
     screenShake: 0,
-    runUsedAd: false,
-    runUsedPowerUp: false,
-    runUsedShield: false,
+    runDeaths: 0,
+    runCoinPercent: 0,
     lastRunStars: 0,
   }),
 
