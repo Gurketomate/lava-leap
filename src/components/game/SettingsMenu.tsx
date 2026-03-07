@@ -131,7 +131,7 @@ const SettingsMenu = ({ onClose }: SettingsMenuProps) => {
                 className="flex-1 py-2 rounded-lg font-display font-bold text-sm bg-destructive text-destructive-foreground
                   hover:scale-105 active:scale-95 transition-transform"
               >
-                JA, RESET
+                YES, RESET
               </button>
               <button
                 onClick={() => setShowResetConfirm(false)}
