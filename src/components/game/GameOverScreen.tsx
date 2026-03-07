@@ -67,7 +67,7 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
             <p className="text-3xl font-display font-bold text-primary text-glow-primary">{Math.max(highScore, score)}</p>
           </div>
           <div className="glass-panel px-6 py-4 text-center min-w-[100px]">
-            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Münzen</p>
+            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Coins</p>
             <p className="text-3xl font-display font-bold text-accent coin-glow">+{coins}</p>
           </div>
         </div>
