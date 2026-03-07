@@ -118,7 +118,7 @@ const SettingsMenu = ({ onClose }: SettingsMenuProps) => {
             className="flex items-center gap-3 py-2 group"
           >
             <RotateCcw size={18} className="text-destructive" />
-            <span className="font-body text-sm text-destructive">Fortschritt zurücksetzen</span>
+            <span className="font-body text-sm text-destructive">Reset Progress</span>
           </button>
         ) : (
           <div className="flex flex-col gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
