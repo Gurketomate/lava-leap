@@ -544,7 +544,6 @@ export class GameEngine {
 
       // Item pickup spawning (rare, distance-gated, never on breakable)
       this.platformsSinceLastItem++;
-      const levelId = this.currentLevel?.id ?? 1;
       const spawnChance = getItemSpawnChance(levelId);
       if (['normal', 'moving'].includes(type) && newY < this.lavaY - 300 && this.platformsSinceLastItem >= ITEM_MIN_PLATFORM_GAP) {
         if (Math.random() < spawnChance) {
