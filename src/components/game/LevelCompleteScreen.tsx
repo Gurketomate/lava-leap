@@ -74,7 +74,7 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
 
         <div className="flex gap-4">
           <div className="glass-panel px-6 py-4 text-center min-w-[100px]">
-            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Höhe</p>
+            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Height</p>
             <p className="text-3xl font-display font-bold text-foreground">{score}</p>
           </div>
           <div className="glass-panel px-6 py-4 text-center min-w-[100px]">
