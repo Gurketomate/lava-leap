@@ -27,7 +27,31 @@ const ITEM_DEFINITIONS: { type: ItemType; icon: string; color: string }[] = [
   { type: 'doubleJump', icon: '🪶', color: '#ecf0f1' },
 ];
 
-const ITEM_SPAWN_CHANCE = 0.15;
+// Item spawn probabilities (weighted)
+const ITEM_WEIGHTS: Record<ItemType, number> = {
+  coinMagnet: 0.375,  // 3% of 8% ≈ 37.5% of item pool
+  lavaBrake: 0.25,    // 2% of 8% ≈ 25%
+  shield: 0.25,       // 2% of 8% ≈ 25%
+  doubleJump: 0.125,  // 1% of 8% ≈ 12.5%
+};
+
+function getItemSpawnChance(levelId: number): number {
+  if (levelId <= 5) return 0.05;
+  if (levelId <= 15) return 0.07;
+  return 0.08;
+}
+
+const ITEM_MIN_PLATFORM_GAP = 6;
+
+function pickWeightedItem(): ItemType {
+  const r = Math.random();
+  let cumulative = 0;
+  for (const [type, weight] of Object.entries(ITEM_WEIGHTS)) {
+    cumulative += weight;
+    if (r <= cumulative) return type as ItemType;
+  }
+  return 'coinMagnet';
+}
 
 export class GameEngine {
   canvas: HTMLCanvasElement;
