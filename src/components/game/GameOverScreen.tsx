@@ -44,7 +44,7 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
           </h2>
           {isNewHigh && (
             <p className="text-accent font-display font-bold text-lg mt-1 animate-float text-glow-accent">
-              ⭐ NEUER HIGHSCORE! ⭐
+              ⭐ NEW HIGH SCORE! ⭐
             </p>
           )}
         </div>
