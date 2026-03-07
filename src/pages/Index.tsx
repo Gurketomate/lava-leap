@@ -108,7 +108,7 @@ const Index = () => {
   const handleRevive = useCallback(() => {
     const engine = engineRef.current;
     if (!engine) return;
-    store.markUsedAd();
+    engine.runDeaths++;
     store.setScreen('playing');
     engine.revive();
   }, [store]);
