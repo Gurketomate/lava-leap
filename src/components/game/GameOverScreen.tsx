@@ -81,7 +81,7 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
               hover:scale-105 active:scale-95 transition-transform duration-150
               disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {showingAd ? '⏳ Lade…' : '🛡️ WEITERLEBEN (Werbung)'}
+            {showingAd ? '⏳ Loading…' : '🛡️ CONTINUE (Ad)'}
           </button>
         )}
 
