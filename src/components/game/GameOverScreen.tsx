@@ -86,7 +86,7 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
         )}
 
         <div className="glass-panel px-8 py-3 text-center opacity-30">
-          <p className="text-xs text-muted-foreground font-body">📺 Werbeplatz (SDK ready)</p>
+          <p className="text-xs text-muted-foreground font-body">📺 Ad Space (SDK ready)</p>
         </div>
 
         <div className="flex gap-3">
