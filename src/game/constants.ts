@@ -238,8 +238,8 @@ export const PERMANENT_UPGRADES = [
   },
   {
     id: 'lavaResist',
-    name: 'Hitzeresistenz',
-    description: 'Lava startet 3% langsamer',
+    name: 'Heat Resistance',
+    description: 'Lava starts 3% slower',
     icon: '🛡️',
     maxLevel: 10,
     baseCost: 60,
