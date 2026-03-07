@@ -135,8 +135,8 @@ export const LEVELS: LevelDefinition[] = (() => {
     } else if (id <= 15) {
       // MID tier
       const lt = (id - 6) / 9;
-      const midNames = ['Wankende Pfade', 'Brüchiger Grund', 'Feuertanz', 'Schmale Grate', 'Lavastrom',
-        'Ascheregen', 'Glutpfad', 'Felssturz', 'Hitzewelle', 'Magmakern'];
+      const midNames = ['Shaky Paths', 'Brittle Ground', 'Fire Dance', 'Narrow Ridges', 'Lava Stream',
+        'Ash Rain', 'Ember Trail', 'Rockfall', 'Heat Wave', 'Magma Core'];
       name = midNames[id - 6];
       targetHeight = Math.floor(lerp(550, 1200, lt));
       normalChance = lerp(0.65, 0.38, lt);
