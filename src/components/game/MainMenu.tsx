@@ -38,18 +38,18 @@ const MainMenu = ({ onStart, onShop, onSettings }: MainMenuProps) => {
             ESCAPE
           </h2>
           <p className="text-muted-foreground font-body mt-2 text-sm tracking-wider">
-            Springe. Sammle. Überlebe.
+            Jump. Collect. Survive.
           </p>
         </div>
 
         {/* Stats */}
         <div className="flex gap-6">
           <div className="glass-panel px-5 py-3 text-center">
-            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Highscore</p>
+            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">High Score</p>
             <p className="text-2xl font-display font-bold text-primary text-glow-primary">{highScore}</p>
           </div>
           <div className="glass-panel px-5 py-3 text-center">
-            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Münzen</p>
+            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Coins</p>
             <p className="text-2xl font-display font-bold text-accent coin-glow">{totalCoins}</p>
           </div>
         </div>
@@ -63,7 +63,7 @@ const MainMenu = ({ onStart, onShop, onSettings }: MainMenuProps) => {
               hover:scale-105 active:scale-95 transition-transform duration-150
               lava-glow"
           >
-            SPIELEN
+            PLAY
           </button>
           <button
             onClick={handleShop}
@@ -77,7 +77,7 @@ const MainMenu = ({ onStart, onShop, onSettings }: MainMenuProps) => {
 
         {/* Controls hint */}
         <p className="text-xs text-muted-foreground/60 font-body text-center max-w-xs">
-          Tippe links/rechts zum Steuern • Pfeiltasten am Desktop
+          Tap left/right to move • Arrow keys on desktop
         </p>
       </div>
     </div>

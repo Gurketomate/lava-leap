@@ -118,7 +118,7 @@ export const LEVELS: LevelDefinition[] = (() => {
     if (id <= 5) {
       // INTRO tier
       const lt = (id - 1) / 4;
-      name = ['Einstieg', 'Erste Schritte', 'Aufstieg', 'Leichter Wind', 'Gipfelblick'][id - 1];
+      name = ['First Steps', 'Getting Started', 'The Ascent', 'Light Breeze', 'Summit View'][id - 1];
       targetHeight = Math.floor(lerp(250, 500, lt));
       normalChance = lerp(0.88, 0.70, lt);
       breakableChance = lerp(0.01, 0.05, lt);
@@ -135,8 +135,8 @@ export const LEVELS: LevelDefinition[] = (() => {
     } else if (id <= 15) {
       // MID tier
       const lt = (id - 6) / 9;
-      const midNames = ['Wankende Pfade', 'Brüchiger Grund', 'Feuertanz', 'Schmale Grate', 'Lavastrom',
-        'Ascheregen', 'Glutpfad', 'Felssturz', 'Hitzewelle', 'Magmakern'];
+      const midNames = ['Shaky Paths', 'Brittle Ground', 'Fire Dance', 'Narrow Ridges', 'Lava Stream',
+        'Ash Rain', 'Ember Trail', 'Rockfall', 'Heat Wave', 'Magma Core'];
       name = midNames[id - 6];
       targetHeight = Math.floor(lerp(550, 1200, lt));
       normalChance = lerp(0.65, 0.38, lt);
@@ -154,9 +154,9 @@ export const LEVELS: LevelDefinition[] = (() => {
     } else if (id <= 30) {
       // HARD tier
       const lt = (id - 16) / 14;
-      const hardNames = ['Todeskrater', 'Vulkangipfel', 'Obsidianbrücke', 'Flammentor', 'Kraterrand',
-        'Schattenfeuer', 'Lavafontäne', 'Glutregen', 'Schmelzofen', 'Feuerprobe',
-        'Magmastrom', 'Vulkanherz', 'Inferno', 'Feuersturm', 'Höllenschlund'];
+      const hardNames = ['Death Crater', 'Volcano Peak', 'Obsidian Bridge', 'Flame Gate', 'Crater Edge',
+        'Shadow Fire', 'Lava Fountain', 'Ember Rain', 'Smelter', 'Trial by Fire',
+        'Magma Stream', 'Volcano Heart', 'Inferno', 'Firestorm', 'Hell\'s Maw'];
       name = hardNames[id - 16];
       targetHeight = Math.floor(lerp(1300, 2500, lt));
       normalChance = lerp(0.33, 0.15, lt);
@@ -174,10 +174,10 @@ export const LEVELS: LevelDefinition[] = (() => {
     } else {
       // ELITE tier (31-50)
       const lt = (id - 31) / 19;
-      const eliteNames = ['Aschekrone', 'Glutgipfel', 'Lavafall', 'Feuerkern', 'Schmelztiegel',
-        'Obsidiansturm', 'Magmaflut', 'Kratersee', 'Vulkanfaust', 'Flammengrab',
-        'Feuerodem', 'Glutwand', 'Lavazorn', 'Höllenritt', 'Magmaherz',
-        'Aschegeist', 'Vulkanzorn', 'Feuerseele', 'Glutkrone', 'Eruption'];
+      const eliteNames = ['Ash Crown', 'Ember Peak', 'Lava Falls', 'Fire Core', 'Crucible',
+        'Obsidian Storm', 'Magma Flood', 'Crater Lake', 'Volcano Fist', 'Flame Grave',
+        'Fire Breath', 'Ember Wall', 'Lava Wrath', 'Hell Ride', 'Magma Heart',
+        'Ash Ghost', 'Volcano Fury', 'Fire Soul', 'Ember Crown', 'Eruption'];
       name = eliteNames[id - 31];
       targetHeight = Math.floor(lerp(2600, 5000, lt));
       normalChance = lerp(0.12, 0.05, lt);
@@ -216,8 +216,8 @@ export const LEVELS: LevelDefinition[] = (() => {
 export const PERMANENT_UPGRADES = [
   {
     id: 'jumpHeight',
-    name: 'Sprungkraft',
-    description: '+5% Sprunghöhe',
+    name: 'Jump Power',
+    description: '+5% jump height',
     icon: '🦘',
     maxLevel: 10,
     baseCost: 50,
@@ -227,8 +227,8 @@ export const PERMANENT_UPGRADES = [
   },
   {
     id: 'coinSpawn',
-    name: 'Münzregen',
-    description: '+3% Münz-Spawn',
+    name: 'Coin Rain',
+    description: '+3% coin spawn rate',
     icon: '🪙',
     maxLevel: 10,
     baseCost: 40,
@@ -238,8 +238,8 @@ export const PERMANENT_UPGRADES = [
   },
   {
     id: 'lavaResist',
-    name: 'Hitzeresistenz',
-    description: 'Lava startet 3% langsamer',
+    name: 'Heat Resistance',
+    description: 'Lava starts 3% slower',
     icon: '🛡️',
     maxLevel: 10,
     baseCost: 60,
@@ -249,15 +249,15 @@ export const PERMANENT_UPGRADES = [
   },
   {
     id: 'startShield',
-    name: 'Startschild',
-    description: 'Starte mit Schild (1 Run, blockiert 1x Lava)',
+    name: 'Start Shield',
+    description: 'Start with a shield (1 run, blocks lava once)',
     icon: '💎',
     maxLevel: 1,
     baseCost: 200,
     costMultiplier: 1,
     effectPerLevel: 1,
     effectUnit: '',
-    consumable: true, // consumed after each run
+    consumable: true,
   },
 ];
 

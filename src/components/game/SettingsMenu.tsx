@@ -39,7 +39,7 @@ const SettingsMenu = ({ onClose }: SettingsMenuProps) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Settings className="text-primary" size={22} />
-            <h2 className="text-xl font-display font-bold text-foreground">EINSTELLUNGEN</h2>
+            <h2 className="text-xl font-display font-bold text-foreground">SETTINGS</h2>
           </div>
           <button
             onClick={handleClose}
@@ -54,7 +54,7 @@ const SettingsMenu = ({ onClose }: SettingsMenuProps) => {
           <button onClick={handleToggleMusic} className="flex items-center justify-between py-2 group">
             <div className="flex items-center gap-3">
               <Music size={18} className="text-accent" />
-              <span className="font-body text-sm text-foreground">Musik</span>
+              <span className="font-body text-sm text-foreground">Music</span>
             </div>
             <TogglePill enabled={musicEnabled} />
           </button>
@@ -79,7 +79,7 @@ const SettingsMenu = ({ onClose }: SettingsMenuProps) => {
           <button onClick={handleToggleSfx} className="flex items-center justify-between py-2 group">
             <div className="flex items-center gap-3">
               <Volume2 size={18} className="text-accent" />
-              <span className="font-body text-sm text-foreground">Soundeffekte</span>
+              <span className="font-body text-sm text-foreground">Sound Effects</span>
             </div>
             <TogglePill enabled={sfxEnabled} />
           </button>
@@ -103,7 +103,7 @@ const SettingsMenu = ({ onClose }: SettingsMenuProps) => {
         <button onClick={handleToggleVibration} className="flex items-center justify-between py-2">
           <div className="flex items-center gap-3">
             <Smartphone size={18} className="text-accent" />
-            <span className="font-body text-sm text-foreground">Vibration / Haptik</span>
+            <span className="font-body text-sm text-foreground">Vibration / Haptics</span>
           </div>
           <TogglePill enabled={vibrationEnabled} />
         </button>
@@ -118,12 +118,12 @@ const SettingsMenu = ({ onClose }: SettingsMenuProps) => {
             className="flex items-center gap-3 py-2 group"
           >
             <RotateCcw size={18} className="text-destructive" />
-            <span className="font-body text-sm text-destructive">Fortschritt zurücksetzen</span>
+            <span className="font-body text-sm text-destructive">Reset Progress</span>
           </button>
         ) : (
           <div className="flex flex-col gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
             <p className="text-xs text-destructive font-body text-center">
-              Highscore, Münzen und Upgrades werden gelöscht. Bist du sicher?
+              High score, coins, and upgrades will be deleted. Are you sure?
             </p>
             <div className="flex gap-2">
               <button
@@ -131,14 +131,14 @@ const SettingsMenu = ({ onClose }: SettingsMenuProps) => {
                 className="flex-1 py-2 rounded-lg font-display font-bold text-sm bg-destructive text-destructive-foreground
                   hover:scale-105 active:scale-95 transition-transform"
               >
-                JA, RESET
+                YES, RESET
               </button>
               <button
                 onClick={() => setShowResetConfirm(false)}
                 className="flex-1 py-2 rounded-lg font-display font-semibold text-sm glass-panel text-foreground
                   hover:scale-105 active:scale-95 transition-transform"
               >
-                ABBRECHEN
+                CANCEL
               </button>
             </div>
           </div>

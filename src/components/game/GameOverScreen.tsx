@@ -44,7 +44,7 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
           </h2>
           {isNewHigh && (
             <p className="text-accent font-display font-bold text-lg mt-1 animate-float text-glow-accent">
-              ⭐ NEUER HIGHSCORE! ⭐
+              ⭐ NEW HIGH SCORE! ⭐
             </p>
           )}
         </div>
@@ -67,7 +67,7 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
             <p className="text-3xl font-display font-bold text-primary text-glow-primary">{Math.max(highScore, score)}</p>
           </div>
           <div className="glass-panel px-6 py-4 text-center min-w-[100px]">
-            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Münzen</p>
+            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Coins</p>
             <p className="text-3xl font-display font-bold text-accent coin-glow">+{coins}</p>
           </div>
         </div>
@@ -81,12 +81,12 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
               hover:scale-105 active:scale-95 transition-transform duration-150
               disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {showingAd ? '⏳ Lade…' : '🛡️ WEITERLEBEN (Werbung)'}
+            {showingAd ? '⏳ Loading…' : '🛡️ CONTINUE (Ad)'}
           </button>
         )}
 
         <div className="glass-panel px-8 py-3 text-center opacity-30">
-          <p className="text-xs text-muted-foreground font-body">📺 Werbeplatz (SDK ready)</p>
+          <p className="text-xs text-muted-foreground font-body">📺 Ad Space (SDK ready)</p>
         </div>
 
         <div className="flex gap-3">
@@ -96,7 +96,7 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
               bg-gradient-to-r from-primary to-lava-glow
               hover:scale-105 active:scale-95 transition-transform duration-150 lava-glow"
           >
-            🔁 NOCHMAL
+            🔁 RETRY
           </button>
           <button
             onClick={handleMenu}
@@ -104,7 +104,7 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
               glass-panel text-foreground
               hover:scale-105 active:scale-95 transition-transform duration-150"
           >
-            MENÜ
+            MENU
           </button>
         </div>
       </div>

@@ -26,9 +26,9 @@ const StarDisplay = ({ stars }: { stars: number }) => (
 
 const STAR_LABELS = [
   '',
-  'Gut gemacht!',
-  'Stark gespielt!',
-  'Perfekter Run! 🔥',
+  'Well done!',
+  'Great run!',
+  'Perfect Run! 🔥',
 ];
 
 const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) => {
@@ -57,13 +57,13 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
       <div className="flex flex-col items-center gap-6 animate-fade-in">
         <div className="text-center">
           <p className="text-xs text-accent font-display uppercase tracking-[0.3em] animate-float">
-            GESCHAFFT
+            COMPLETE
           </p>
           <h2 className="text-4xl md:text-5xl font-display font-black text-foreground mt-2">
             LEVEL {currentLevel}
           </h2>
           <p className="text-lg text-accent font-display font-bold mt-1 text-glow-accent">
-            ABGESCHLOSSEN!
+            CLEARED!
           </p>
         </div>
 
@@ -74,15 +74,15 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
 
         <div className="flex gap-4">
           <div className="glass-panel px-6 py-4 text-center min-w-[100px]">
-            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Höhe</p>
+            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Height</p>
             <p className="text-3xl font-display font-bold text-foreground">{score}</p>
           </div>
           <div className="glass-panel px-6 py-4 text-center min-w-[100px]">
-            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Münzen</p>
+            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Coins</p>
             <p className="text-3xl font-display font-bold text-accent coin-glow">+{coins}</p>
           </div>
           <div className="glass-panel px-6 py-4 text-center min-w-[100px]">
-            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Gesammelt</p>
+            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Collected</p>
             <p className={`text-3xl font-display font-bold ${coinPct >= 85 ? 'text-accent coin-glow' : coinPct >= 60 ? 'text-foreground' : 'text-muted-foreground'}`}>
               {coinPct}%
             </p>
@@ -96,7 +96,7 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
               bg-gradient-to-r from-accent to-primary
               hover:scale-105 active:scale-95 transition-transform duration-150 lava-glow"
           >
-            NÄCHSTES LEVEL
+            NEXT LEVEL
           </button>
           <button
             onClick={handleMenu}
@@ -104,7 +104,7 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
               glass-panel text-foreground
               hover:scale-105 active:scale-95 transition-transform duration-150"
           >
-            MENÜ
+            MENU
           </button>
         </div>
       </div>

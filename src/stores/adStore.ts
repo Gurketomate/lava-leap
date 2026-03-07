@@ -112,9 +112,9 @@ export const useAdStore = create<AdStore>((set, get) => ({
     if (targetHeight <= 0) return null;
     const ratio = score / targetHeight;
 
-    if (ratio >= 0.90) return '🔥 SO NAH DRAN! Nur noch ein paar Meter!';
-    if (ratio >= 0.75) return '💪 Starker Lauf! Du warst bei 75%!';
-    if (ratio >= 0.50) return '👀 Über die Hälfte geschafft — pack es nochmal an!';
+     if (ratio >= 0.90) return '🔥 SO CLOSE! Just a few more meters!';
+     if (ratio >= 0.75) return '💪 Great run! You reached 75%!';
+     if (ratio >= 0.50) return '👀 Over halfway there — give it another shot!';
 
     return null;
   },
