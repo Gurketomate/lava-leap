@@ -39,7 +39,7 @@ const SettingsMenu = ({ onClose }: SettingsMenuProps) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Settings className="text-primary" size={22} />
-            <h2 className="text-xl font-display font-bold text-foreground">EINSTELLUNGEN</h2>
+            <h2 className="text-xl font-display font-bold text-foreground">SETTINGS</h2>
           </div>
           <button
             onClick={handleClose}
