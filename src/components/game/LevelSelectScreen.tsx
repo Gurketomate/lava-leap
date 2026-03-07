@@ -15,9 +15,9 @@ const LevelSelectScreen = ({ onSelectLevel, onBack }: LevelSelectScreenProps) =>
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm">
       <div className="flex flex-col items-center gap-6 animate-fade-in max-w-lg w-full px-4">
         <div className="text-center">
-          <h2 className="text-3xl font-display font-bold text-foreground">LEVEL WÄHLEN</h2>
+          <h2 className="text-3xl font-display font-bold text-foreground">SELECT LEVEL</h2>
           <p className="text-sm text-muted-foreground font-body mt-1">
-            {maxUnlockedLevel} von {LEVELS.length} freigeschaltet
+            {maxUnlockedLevel} of {LEVELS.length} unlocked
           </p>
         </div>
 
