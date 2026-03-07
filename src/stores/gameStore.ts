@@ -138,9 +138,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     lavaProximity: 0,
     phase: 1,
     screenShake: 0,
-    runUsedAd: false,
-    runUsedPowerUp: false,
-    runUsedShield: false,
+    runDeaths: 0,
+    runCoinPercent: 0,
     lastRunStars: 0,
   }),
 

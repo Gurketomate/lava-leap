@@ -262,6 +262,8 @@ export class GameEngine {
     this.lavaSpeed = LAVA_INITIAL_SPEED * (1 - this.lavaResistBonus);
     this.score = 0;
     this.coinCount = 0;
+    this.totalCoinsSpawned = 0;
+    this.runDeaths = 0;
     this.platforms = [];
     this.coins = [];
     this.particles = [];
