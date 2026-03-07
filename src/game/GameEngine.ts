@@ -719,6 +719,7 @@ export class GameEngine {
             playJump(0.3);
           } else {
             this.performJump('normal', 1.0);
+            this.screenShake = 0.08; // subtle landing feedback
             playJump(0.4);
           }
 

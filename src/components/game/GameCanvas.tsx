@@ -61,22 +61,35 @@ const GameCanvas = ({ onReady }: GameCanvasProps) => {
 
     // Keyboard support for desktop
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft' || e.key === 'a') engine.setInput(-1);
-      if (e.key === 'ArrowRight' || e.key === 'd') engine.setInput(1);
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') engine.setInput(-1);
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') engine.setInput(1);
       if (e.key === ' ') { e.preventDefault(); engine.doDoubleJump(); }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (['ArrowLeft', 'a', 'ArrowRight', 'd'].includes(e.key)) engine.setInput(0);
+      if (['ArrowLeft', 'a', 'A', 'ArrowRight', 'd', 'D'].includes(e.key)) engine.setInput(0);
+    };
+
+    // Tab blur/focus pause
+    const handleVisibilityChange = () => {
+      if (document.hidden && engine.running) {
+        engine.paused = true;
+      } else if (!document.hidden && engine.running && engine.paused) {
+        engine.paused = false;
+        engine.lastTime = performance.now();
+        requestAnimationFrame(engine.loop);
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       engine.destroy();
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [onReady]);
 
