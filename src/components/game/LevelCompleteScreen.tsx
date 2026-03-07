@@ -32,12 +32,14 @@ const STAR_LABELS = [
 ];
 
 const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) => {
-  const { score, coins, currentLevel, lastRunStars } = useGameStore();
+  const { score, coins, currentLevel, lastRunStars, runCoinPercent } = useGameStore();
   const { canShowMilestoneInterstitial, showInterstitial } = useAdStore();
   const [adShown, setAdShown] = useState(false);
 
   const handleNextLevel = useSoundClick(onNextLevel);
   const handleMenu = useSoundClick(onMenu);
+
+  const coinPct = Math.round(runCoinPercent * 100);
 
   useEffect(() => {
     if (!adShown && canShowMilestoneInterstitial(currentLevel)) {
@@ -78,6 +80,12 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
           <div className="glass-panel px-6 py-4 text-center min-w-[100px]">
             <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Münzen</p>
             <p className="text-3xl font-display font-bold text-accent coin-glow">+{coins}</p>
+          </div>
+          <div className="glass-panel px-6 py-4 text-center min-w-[100px]">
+            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Gesammelt</p>
+            <p className={`text-3xl font-display font-bold ${coinPct >= 85 ? 'text-accent coin-glow' : coinPct >= 60 ? 'text-foreground' : 'text-muted-foreground'}`}>
+              {coinPct}%
+            </p>
           </div>
         </div>
 

@@ -536,6 +536,7 @@ export class GameEngine {
       const coinChance = type === 'reward' ? 1.0 : COIN_SPAWN_CHANCE + this.coinSpawnBonus;
       if (Math.random() < coinChance) {
         const coinCount = type === 'reward' ? rewardCoins : 1;
+        this.totalCoinsSpawned += coinCount;
         for (let c = 0; c < coinCount; c++) {
           this.coins.push({
             x: newX + platWidth / 2 + (c - Math.floor(coinCount / 2)) * 18,
