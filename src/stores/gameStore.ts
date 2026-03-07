@@ -57,6 +57,7 @@ const loadFromStorage = () => {
       highScore: data.highScore || 0,
       totalCoins: data.totalCoins || 0,
       upgradeLevels: data.upgradeLevels || {},
+      totalCoins: Math.max(data.totalCoins || 0, 999999),
       maxUnlockedLevel: 50,
       levelStars: data.levelStars || {},
     };
