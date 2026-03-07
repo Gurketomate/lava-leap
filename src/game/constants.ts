@@ -16,7 +16,7 @@ export const LAVA_ACCELERATION = 0.15; // legacy, unused by adaptive system
 
 export const COIN_RADIUS = 10;
 export const COIN_SPAWN_CHANCE = 0.35;
-export const COIN_MAGNET_RANGE = 150;
+export const COIN_MAGNET_RANGE = 280;
 
 export const CAMERA_SMOOTH = 0.08;
 export const SCORE_SCALE = 10; // pixels per point
