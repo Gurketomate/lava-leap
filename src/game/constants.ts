@@ -118,7 +118,7 @@ export const LEVELS: LevelDefinition[] = (() => {
     if (id <= 5) {
       // INTRO tier
       const lt = (id - 1) / 4;
-      name = ['Einstieg', 'Erste Schritte', 'Aufstieg', 'Leichter Wind', 'Gipfelblick'][id - 1];
+      name = ['First Steps', 'Getting Started', 'The Ascent', 'Light Breeze', 'Summit View'][id - 1];
       targetHeight = Math.floor(lerp(250, 500, lt));
       normalChance = lerp(0.88, 0.70, lt);
       breakableChance = lerp(0.01, 0.05, lt);
