@@ -54,7 +54,7 @@ const SettingsMenu = ({ onClose }: SettingsMenuProps) => {
           <button onClick={handleToggleMusic} className="flex items-center justify-between py-2 group">
             <div className="flex items-center gap-3">
               <Music size={18} className="text-accent" />
-              <span className="font-body text-sm text-foreground">Musik</span>
+              <span className="font-body text-sm text-foreground">Music</span>
             </div>
             <TogglePill enabled={musicEnabled} />
           </button>
