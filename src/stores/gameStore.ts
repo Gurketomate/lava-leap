@@ -101,9 +101,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const newLevels = { ...s.upgradeLevels };
     if (newLevels['startShield'] > 0) newLevels['startShield'] = 0;
 
-    let stars = 3;
-    if (s.runUsedAd) stars = 1;
-    else if (s.runUsedPowerUp || s.runUsedShield) stars = 2;
+    let stars = 1;
+    if (s.runCoinPercent >= 0.85 && s.runDeaths === 0) stars = 3;
+    else if (s.runCoinPercent >= 0.60) stars = 2;
 
     const newLevelStars = { ...s.levelStars };
     const prev = newLevelStars[s.currentLevel] || 0;
