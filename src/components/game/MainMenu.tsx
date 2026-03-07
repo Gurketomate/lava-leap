@@ -45,7 +45,7 @@ const MainMenu = ({ onStart, onShop, onSettings }: MainMenuProps) => {
         {/* Stats */}
         <div className="flex gap-6">
           <div className="glass-panel px-5 py-3 text-center">
-            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Highscore</p>
+            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">High Score</p>
             <p className="text-2xl font-display font-bold text-primary text-glow-primary">{highScore}</p>
           </div>
           <div className="glass-panel px-5 py-3 text-center">
