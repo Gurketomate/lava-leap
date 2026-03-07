@@ -77,7 +77,7 @@ const MainMenu = ({ onStart, onShop, onSettings }: MainMenuProps) => {
 
         {/* Controls hint */}
         <p className="text-xs text-muted-foreground/60 font-body text-center max-w-xs">
-          Tippe links/rechts zum Steuern • Pfeiltasten am Desktop
+          Tap left/right to move • Arrow keys on desktop
         </p>
       </div>
     </div>

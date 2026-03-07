@@ -104,7 +104,7 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
               glass-panel text-foreground
               hover:scale-105 active:scale-95 transition-transform duration-150"
           >
-            MENÜ
+            MENU
           </button>
         </div>
       </div>

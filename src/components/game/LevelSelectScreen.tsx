@@ -36,7 +36,7 @@ const LevelSelectScreen = ({ onSelectLevel, onBack }: LevelSelectScreenProps) =>
           className="glass-panel px-8 py-3 rounded-xl font-display font-semibold text-foreground
             hover:scale-105 active:scale-95 transition-transform duration-150"
         >
-          ZURÜCK
+          BACK
         </button>
       </div>
     </div>

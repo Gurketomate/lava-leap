@@ -138,7 +138,7 @@ const SettingsMenu = ({ onClose }: SettingsMenuProps) => {
                 className="flex-1 py-2 rounded-lg font-display font-semibold text-sm glass-panel text-foreground
                   hover:scale-105 active:scale-95 transition-transform"
               >
-                ABBRECHEN
+                CANCEL
               </button>
             </div>
           </div>
