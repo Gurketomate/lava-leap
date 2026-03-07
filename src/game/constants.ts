@@ -174,10 +174,10 @@ export const LEVELS: LevelDefinition[] = (() => {
     } else {
       // ELITE tier (31-50)
       const lt = (id - 31) / 19;
-      const eliteNames = ['Aschekrone', 'Glutgipfel', 'Lavafall', 'Feuerkern', 'Schmelztiegel',
-        'Obsidiansturm', 'Magmaflut', 'Kratersee', 'Vulkanfaust', 'Flammengrab',
-        'Feuerodem', 'Glutwand', 'Lavazorn', 'Höllenritt', 'Magmaherz',
-        'Aschegeist', 'Vulkanzorn', 'Feuerseele', 'Glutkrone', 'Eruption'];
+      const eliteNames = ['Ash Crown', 'Ember Peak', 'Lava Falls', 'Fire Core', 'Crucible',
+        'Obsidian Storm', 'Magma Flood', 'Crater Lake', 'Volcano Fist', 'Flame Grave',
+        'Fire Breath', 'Ember Wall', 'Lava Wrath', 'Hell Ride', 'Magma Heart',
+        'Ash Ghost', 'Volcano Fury', 'Fire Soul', 'Ember Crown', 'Eruption'];
       name = eliteNames[id - 31];
       targetHeight = Math.floor(lerp(2600, 5000, lt));
       normalChance = lerp(0.12, 0.05, lt);
