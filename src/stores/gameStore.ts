@@ -55,7 +55,7 @@ const loadFromStorage = () => {
     const data = JSON.parse(localStorage.getItem('volcanoEscape') || '{}');
     return {
       highScore: data.highScore || 0,
-      totalCoins: data.totalCoins || 0,
+      totalCoins: Math.max(data.totalCoins || 0, 999999),
       upgradeLevels: data.upgradeLevels || {},
       maxUnlockedLevel: 50,
       levelStars: data.levelStars || {},
