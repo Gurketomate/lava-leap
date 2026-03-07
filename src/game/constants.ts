@@ -227,8 +227,8 @@ export const PERMANENT_UPGRADES = [
   },
   {
     id: 'coinSpawn',
-    name: 'Münzregen',
-    description: '+3% Münz-Spawn',
+    name: 'Coin Rain',
+    description: '+3% coin spawn rate',
     icon: '🪙',
     maxLevel: 10,
     baseCost: 40,
