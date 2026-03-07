@@ -542,17 +542,22 @@ export class GameEngine {
         }
       }
 
-      // Item pickup spawning (~15% of normal/moving/breakable platforms, not special)
-      if (['normal', 'moving', 'breakable'].includes(type) && newY < this.lavaY - 300) {
-        if (Math.random() < ITEM_SPAWN_CHANCE) {
-          const itemDef = ITEM_DEFINITIONS[Math.floor(Math.random() * ITEM_DEFINITIONS.length)];
+      // Item pickup spawning (rare, distance-gated, never on breakable)
+      this.platformsSinceLastItem++;
+      const levelId = this.currentLevel?.id ?? 1;
+      const spawnChance = getItemSpawnChance(levelId);
+      if (['normal', 'moving'].includes(type) && newY < this.lavaY - 300 && this.platformsSinceLastItem >= ITEM_MIN_PLATFORM_GAP) {
+        if (Math.random() < spawnChance) {
+          const itemType = pickWeightedItem();
+          const itemDef = ITEM_DEFINITIONS.find(d => d.type === itemType)!;
           this.items.push({
             x: newX + platWidth / 2,
-            y: newY - 30,
+            y: newY - 20,
             type: itemDef.type,
             collected: false,
             platformIndex: platIndex,
           });
+          this.platformsSinceLastItem = 0;
         }
       }
 
