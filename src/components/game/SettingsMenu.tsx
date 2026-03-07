@@ -103,7 +103,7 @@ const SettingsMenu = ({ onClose }: SettingsMenuProps) => {
         <button onClick={handleToggleVibration} className="flex items-center justify-between py-2">
           <div className="flex items-center gap-3">
             <Smartphone size={18} className="text-accent" />
-            <span className="font-body text-sm text-foreground">Vibration / Haptik</span>
+            <span className="font-body text-sm text-foreground">Vibration / Haptics</span>
           </div>
           <TogglePill enabled={vibrationEnabled} />
         </button>
