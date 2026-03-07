@@ -24,9 +24,8 @@ interface GameStore {
   maxUnlockedLevel: number;
 
   // Star tracking per run
-  runUsedAd: boolean;
-  runUsedPowerUp: boolean;
-  runUsedShield: boolean;
+  runDeaths: number;
+  runCoinPercent: number;
   lastRunStars: number;
   levelStars: LevelStars;
 
