@@ -96,7 +96,7 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
               bg-gradient-to-r from-primary to-lava-glow
               hover:scale-105 active:scale-95 transition-transform duration-150 lava-glow"
           >
-            🔁 NOCHMAL
+            🔁 RETRY
           </button>
           <button
             onClick={handleMenu}
