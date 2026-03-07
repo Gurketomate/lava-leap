@@ -123,7 +123,7 @@ const SettingsMenu = ({ onClose }: SettingsMenuProps) => {
         ) : (
           <div className="flex flex-col gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
             <p className="text-xs text-destructive font-body text-center">
-              Highscore, Münzen und Upgrades werden gelöscht. Bist du sicher?
+              High score, coins, and upgrades will be deleted. Are you sure?
             </p>
             <div className="flex gap-2">
               <button
