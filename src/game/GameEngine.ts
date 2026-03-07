@@ -71,6 +71,8 @@ export class GameEngine {
   lavaSpeed = LAVA_INITIAL_SPEED;
   score = 0;
   coinCount = 0;
+  totalCoinsSpawned = 0;
+  runDeaths = 0;
   maxHeight = 0;
   startY = 0;
   highestPlatformY = 0;
