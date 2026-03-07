@@ -1,6 +1,7 @@
 import { useGameStore } from '@/stores/gameStore';
 import { useSoundClick } from '@/hooks/useSoundClick';
-import { Settings } from 'lucide-react';
+import { Settings, Maximize, Minimize } from 'lucide-react';
+import { useState, useCallback } from 'react';
 
 interface MainMenuProps {
   onStart: () => void;
@@ -10,20 +11,39 @@ interface MainMenuProps {
 
 const MainMenu = ({ onStart, onShop, onSettings }: MainMenuProps) => {
   const { highScore, totalCoins } = useGameStore();
+  const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const handleStart = useSoundClick(onStart);
   const handleShop = useSoundClick(onShop);
   const handleSettings = useSoundClick(onSettings);
 
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().then(() => setIsFullscreen(false));
+    } else {
+      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true));
+    }
+  }, []);
+
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm">
-      {/* Settings button */}
-      <button
-        onClick={handleSettings}
-        className="absolute top-4 right-4 p-3 rounded-xl glass-panel text-muted-foreground
-          hover:text-foreground hover:scale-110 active:scale-95 transition-all duration-150"
-      >
-        <Settings size={22} />
-      </button>
+      {/* Top buttons */}
+      <div className="absolute top-4 right-4 flex gap-2">
+        <button
+          onClick={toggleFullscreen}
+          className="p-3 rounded-xl glass-panel text-muted-foreground
+            hover:text-foreground hover:scale-110 active:scale-95 transition-all duration-150"
+          title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+        >
+          {isFullscreen ? <Minimize size={22} /> : <Maximize size={22} />}
+        </button>
+        <button
+          onClick={handleSettings}
+          className="p-3 rounded-xl glass-panel text-muted-foreground
+            hover:text-foreground hover:scale-110 active:scale-95 transition-all duration-150"
+        >
+          <Settings size={22} />
+        </button>
+      </div>
 
       {/* Lava glow at bottom */}
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-lava/20 to-transparent" />
@@ -76,9 +96,11 @@ const MainMenu = ({ onStart, onShop, onSettings }: MainMenuProps) => {
         </div>
 
         {/* Controls hint */}
-        <p className="text-xs text-muted-foreground/60 font-body text-center max-w-xs">
-          Tap left/right to move • Arrow keys on desktop
-        </p>
+        <div className="text-xs text-muted-foreground/60 font-body text-center max-w-xs space-y-1">
+          <p>⬅️ ➡️ Arrow Keys or A / D to move</p>
+          <p>🪶 SPACE for Double Jump (when active)</p>
+          <p className="text-muted-foreground/40">📱 Tap left/right on mobile • Two-finger tap for double jump</p>
+        </div>
       </div>
     </div>
   );
