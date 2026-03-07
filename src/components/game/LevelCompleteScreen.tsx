@@ -96,7 +96,7 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
               bg-gradient-to-r from-accent to-primary
               hover:scale-105 active:scale-95 transition-transform duration-150 lava-glow"
           >
-            NÄCHSTES LEVEL
+            NEXT LEVEL
           </button>
           <button
             onClick={handleMenu}
