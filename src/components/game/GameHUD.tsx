@@ -81,12 +81,15 @@ const GameHUD = ({ activeEffects = [] }: GameHUDProps) => {
         </div>
       )}
 
-      {/* Double Jump Hint */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
-        <div className="glass-panel px-4 py-1.5 text-xs text-muted-foreground font-body">
-          {isMobile ? '📱 Tap for Double Jump' : '⌨️ SPACE for Double Jump'}
+      {/* Double Jump Hint — only when ability is active */}
+      {activeEffects.some(e => e.type === 'doubleJump') && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-fade-in">
+          <div className="glass-panel px-4 py-1.5 text-xs text-muted-foreground font-body flex items-center gap-1.5">
+            <span>🪶</span>
+            {isMobile ? 'Tap for Double Jump' : 'SPACE for Double Jump'}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Heat Bar */}
       <div className="absolute bottom-0 left-0 w-full h-2">
