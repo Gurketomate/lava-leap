@@ -38,7 +38,7 @@ const MainMenu = ({ onStart, onShop, onSettings }: MainMenuProps) => {
             ESCAPE
           </h2>
           <p className="text-muted-foreground font-body mt-2 text-sm tracking-wider">
-            Springe. Sammle. Überlebe.
+            Jump. Collect. Survive.
           </p>
         </div>
 
