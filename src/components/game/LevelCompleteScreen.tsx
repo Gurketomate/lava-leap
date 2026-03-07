@@ -57,13 +57,13 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
       <div className="flex flex-col items-center gap-6 animate-fade-in">
         <div className="text-center">
           <p className="text-xs text-accent font-display uppercase tracking-[0.3em] animate-float">
-            GESCHAFFT
+            COMPLETE
           </p>
           <h2 className="text-4xl md:text-5xl font-display font-black text-foreground mt-2">
             LEVEL {currentLevel}
           </h2>
           <p className="text-lg text-accent font-display font-bold mt-1 text-glow-accent">
-            ABGESCHLOSSEN!
+            CLEARED!
           </p>
         </div>
 
