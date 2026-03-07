@@ -49,10 +49,6 @@ const Index = () => {
     engine.setPermanentBonuses(bonuses.jumpBonus, bonuses.coinSpawnBonus, bonuses.lavaResistBonus, bonuses.startWithShield);
     engine.setLevel(levelDef);
 
-    if (bonuses.startWithShield) {
-      useGameStore.getState().markUsedShield();
-    }
-
     engine.onScoreUpdate = (score: number) => {
       useGameStore.getState().setScore(score);
     };
