@@ -264,6 +264,7 @@ export class GameEngine {
     this.coins = [];
     this.particles = [];
     this.items = [];
+    this.platformsSinceLastItem = 0;
     this.activeEffects = [];
     this.lavaSpeedMults = [];
     this.hasDoubleJump = false;
