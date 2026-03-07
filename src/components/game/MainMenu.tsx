@@ -63,7 +63,7 @@ const MainMenu = ({ onStart, onShop, onSettings }: MainMenuProps) => {
               hover:scale-105 active:scale-95 transition-transform duration-150
               lava-glow"
           >
-            SPIELEN
+            PLAY
           </button>
           <button
             onClick={handleShop}
