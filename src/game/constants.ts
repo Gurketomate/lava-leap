@@ -216,8 +216,8 @@ export const LEVELS: LevelDefinition[] = (() => {
 export const PERMANENT_UPGRADES = [
   {
     id: 'jumpHeight',
-    name: 'Sprungkraft',
-    description: '+5% Sprunghöhe',
+    name: 'Jump Power',
+    description: '+5% jump height',
     icon: '🦘',
     maxLevel: 10,
     baseCost: 50,
