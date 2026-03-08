@@ -1623,13 +1623,7 @@ export class GameEngine {
     p.vy = -baseForce * forceMult;
 
     if (type !== 'double') {
-      // Landing resets double jump availability
-      if (this.hasDoubleJump && this.player.doubleJumpUsed) {
-        // Double jump was used, now consumed on landing
-        this.hasDoubleJump = false;
-        this.activeEffects = this.activeEffects.filter(e => e.type !== 'doubleJump');
-        this.onActiveEffectsUpdate(this.activeEffects);
-      }
+      // Landing resets double jump usage for next air phase
       p.doubleJumpUsed = false;
       this.wasOnGround = true;
       this.coyoteTimer = 0;
