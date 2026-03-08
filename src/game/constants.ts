@@ -147,11 +147,11 @@ export const LEVELS: LevelDefinition[] = (() => {
         'Ash Rain', 'Ember Trail', 'Rockfall', 'Heat Wave', 'Magma Core'];
       name = midNames[id - 6];
       targetHeight = Math.floor(lerp(450, 550, lt));
-      normalChance = lerp(0.62, 0.38, lt);
+      normalChance = lerp(0.64, 0.41, lt);
       breakableChance = lerp(0.08, 0.18, lt);
       movingChance = lerp(0.14, 0.24, lt);
       boostChance = 0.08;
-      rewardChance = lerp(0.04, 0.08, lt);
+      rewardChance = lerp(0.02, 0.05, lt);
       platformWidthMod = lerp(1.05, 0.88, lt);
       lavaSpeedMod = lerp(0.90, 1.25, lt);
       lavaEndAccel = lerp(1.2, 1.45, lt);
