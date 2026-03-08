@@ -23,8 +23,9 @@ interface GameHUDProps {
 }
 
 const GameHUD = ({ activeEffects = [] }: GameHUDProps) => {
-  const { score, coins, lavaProximity, screenShake, currentLevel } = useGameStore();
-  const levelDef = LEVELS.find(l => l.id === currentLevel);
+  const { score, coins, lavaProximity, screenShake, currentLevel, gameMode, endlessHighScore } = useGameStore();
+  const isEndless = gameMode === 'endless';
+  const levelDef = !isEndless ? LEVELS.find(l => l.id === currentLevel) : null;
   const progress = levelDef ? Math.min(1, score / levelDef.targetHeight) : 0;
   const isMobile = useIsMobile();
 
