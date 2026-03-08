@@ -593,47 +593,70 @@ export class GameEngine {
         const coinCount = type === 'reward' ? rewardCoins : 1;
         this.totalCoinsSpawned += coinCount;
 
+        // Use the actual platform width (reward platforms are narrower)
+        const actualWidth = platform.width;
+        const platCenterX = newX + actualWidth / 2;
+
         if (coinCount <= 1) {
           // Single coin: centered above platform
-          this.coins.push({
-            x: newX + platWidth / 2,
+          const coin: any = {
+            x: platCenterX,
             y: newY - 25,
             radius: COIN_RADIUS,
             collected: false,
             angle: 0,
-          });
+          };
+          if (type === 'reward' && platform.moveSpeed) {
+            coin.platformIndex = platIndex;
+            coin.offsetX = 0;
+            coin.offsetY = newY - 25 - platform.y;
+          }
+          this.coins.push(coin);
         } else {
           // Multi-coin cluster: jump-trajectory patterns only
-          // Cap spread to platform width so all coins are collectible in one jump
-          const centerX = newX + platWidth / 2;
-          const maxSpread = Math.min(platWidth * 0.8, coinCount * 14);
+          const maxSpread = Math.min(actualWidth * 0.8, coinCount * 14);
           const spacing = maxSpread / Math.max(coinCount - 1, 1);
           const pattern = Math.random();
 
           if (pattern < 0.45) {
-            // Arc pattern — parabolic arc matching jump trajectory
+            // Arc pattern — centered on platform
             const halfCount = (coinCount - 1) / 2;
             for (let c = 0; c < coinCount; c++) {
-              const t = (c - halfCount) / Math.max(halfCount, 1); // -1 to 1
-              const arcHeight = 14 * (1 - t * t); // gentle parabola
-              this.coins.push({
-                x: centerX + t * halfCount * spacing,
-                y: newY - 22 - arcHeight,
+              const t = (c - halfCount) / Math.max(halfCount, 1);
+              const arcHeight = 14 * (1 - t * t);
+              const offsetX = t * halfCount * spacing;
+              const coinY = newY - 22 - arcHeight;
+              const coin: any = {
+                x: platCenterX + offsetX,
+                y: coinY,
                 radius: COIN_RADIUS,
                 collected: false,
                 angle: 0,
-              });
+              };
+              if (type === 'reward' && platform.moveSpeed) {
+                coin.platformIndex = platIndex;
+                coin.offsetX = offsetX;
+                coin.offsetY = coinY - platform.y;
+              }
+              this.coins.push(coin);
             }
           } else {
-            // Vertical column — guides player upward along jump path
+            // Vertical column — centered on platform
             for (let c = 0; c < coinCount; c++) {
-              this.coins.push({
-                x: centerX,
-                y: newY - 22 - c * 13,
+              const coinY = newY - 22 - c * 13;
+              const coin: any = {
+                x: platCenterX,
+                y: coinY,
                 radius: COIN_RADIUS,
                 collected: false,
                 angle: 0,
-              });
+              };
+              if (type === 'reward' && platform.moveSpeed) {
+                coin.platformIndex = platIndex;
+                coin.offsetX = 0;
+                coin.offsetY = coinY - platform.y;
+              }
+              this.coins.push(coin);
             }
           }
         }
@@ -977,6 +1000,15 @@ export class GameEngine {
       stopLavaSound();
       playLevelComplete();
       return;
+    }
+
+    // Update platform-linked coins (move with platform)
+    for (const coin of this.coins) {
+      if (coin.collected || coin.platformIndex == null) continue;
+      const plat = this.platforms[coin.platformIndex];
+      if (!plat) continue;
+      coin.x = plat.x + plat.width / 2 + (coin.offsetX ?? 0);
+      coin.y = plat.y + (coin.offsetY ?? -25);
     }
 
     // Coin collection
