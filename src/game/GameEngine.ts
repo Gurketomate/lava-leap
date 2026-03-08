@@ -1452,8 +1452,10 @@ export class GameEngine {
       return;
     }
 
-    ctx.shadowColor = glowColors[plat.type] || glowColors.normal;
-    ctx.shadowBlur = plat.type === 'reward' ? 15 : 8;
+    // Outer glow aura
+    const glowColor = glowColors[plat.type] || glowColors.normal;
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = plat.type === 'reward' ? 18 : plat.type === 'danger' ? 14 : 10;
 
     const grad = ctx.createLinearGradient(plat.x, plat.y, plat.x, plat.y + plat.height);
     grad.addColorStop(0, colors[plat.type] || colors.normal);
@@ -1463,6 +1465,11 @@ export class GameEngine {
     ctx.beginPath();
     ctx.roundRect(plat.x, plat.y, plat.width, plat.height, 4);
     ctx.fill();
+
+    // Subtle edge highlight
+    ctx.strokeStyle = glowColor;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
     ctx.shadowBlur = 0;
 
     if (plat.type === 'breakable') {
