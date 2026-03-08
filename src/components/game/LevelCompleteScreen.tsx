@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { useAdStore } from '@/stores/adStore';
 import { useSoundClick } from '@/hooks/useSoundClick';
+import EmberBackground from '@/components/game/EmberBackground';
 
 interface LevelCompleteScreenProps {
   onNextLevel: () => void;
