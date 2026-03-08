@@ -1097,6 +1097,32 @@ export class GameEngine {
       return part.life > 0;
     });
 
+    // Lava embers — subtle ambient particles rising from lava
+    if (this.lavaEmbers.length < 6 && Math.random() < 0.15) {
+      const emX = Math.random() * this.width;
+      const emLife = 1.5 + Math.random() * 2;
+      this.lavaEmbers.push({
+        x: emX,
+        y: this.lavaY - 5 - Math.random() * 10,
+        vx: (Math.random() - 0.5) * 15,
+        vy: -(20 + Math.random() * 30),
+        size: 1 + Math.random() * 2,
+        opacity: 0.3 + Math.random() * 0.4,
+        life: emLife,
+        maxLife: emLife,
+      });
+    }
+    this.lavaEmbers = this.lavaEmbers.filter(e => {
+      e.x += e.vx * dt;
+      e.y += e.vy * dt;
+      e.vx += (Math.random() - 0.5) * 10 * dt;
+      e.life -= dt;
+      // Fade out in upper portion — only visible in lower 40% of screen
+      const screenY = e.y - this.cameraY;
+      if (screenY < this.height * 0.6) e.life = 0;
+      return e.life > 0;
+    });
+
     this.generatePlatformsUpTo(this.cameraY - PLATFORMS_BUFFER);
 
     // Cleanup
