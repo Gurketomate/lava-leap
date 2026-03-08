@@ -93,7 +93,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setScreenShake: (screenShake) => set({ screenShake }),
   setCurrentLevel: (currentLevel) => set({ currentLevel }),
 
-  setRunStats: (deaths, coinPercent) => set({ runDeaths: deaths, runCoinPercent: coinPercent }),
+  setRunStats: (deaths, coinPercent, totalSpawned) => set({ runDeaths: deaths, runCoinPercent: coinPercent, runTotalCoinsSpawned: totalSpawned }),
 
   completeLevel: () => {
     const s = get();
