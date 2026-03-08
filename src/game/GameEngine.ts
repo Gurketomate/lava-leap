@@ -471,7 +471,7 @@ export class GameEngine {
       case 'doubleJump':
         this.hasDoubleJump = true;
         this.player.doubleJumpUsed = false;
-        // Lasts until next landing after use
+        this.addActiveEffect('doubleJump', 999); // visual indicator, removed on use+land
         break;
     }
   }
