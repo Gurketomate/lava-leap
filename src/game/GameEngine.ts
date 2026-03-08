@@ -1012,14 +1012,14 @@ export class GameEngine {
       const dist = Math.sqrt(dx * dx + dy * dy);
 
       if (this.hasCoinMagnet && dist < COIN_MAGNET_RANGE) {
-        // Smooth curved attraction: stronger pull when closer
-        const t = 1 - (dist / COIN_MAGNET_RANGE); // 0 at edge, 1 at center
-        const pullStrength = 200 + 600 * t * t; // ramps from 200 to 800
+        // Detach from platform so magnet pull works freely
+        coin.linkedPlatform = undefined;
+        const t = 1 - (dist / COIN_MAGNET_RANGE);
+        const pullStrength = 200 + 600 * t * t;
         const speed = pullStrength * dt;
-        // Add perpendicular component for curved motion
         const nx = dx / dist;
         const ny = dy / dist;
-        const perpX = -ny * 0.3 * (1 - t); // curve fades as coin gets closer
+        const perpX = -ny * 0.3 * (1 - t);
         const perpY = nx * 0.3 * (1 - t);
         coin.x += (nx + perpX) * speed;
         coin.y += (ny + perpY) * speed;
