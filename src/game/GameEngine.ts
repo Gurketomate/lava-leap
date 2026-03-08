@@ -1464,7 +1464,7 @@ export class GameEngine {
     if (!def) return;
 
     const time = performance.now() / 1000;
-    const bobY = Math.sin(time * 3 + item.x) * 4;
+    const bobY = Math.sin(time * 3 + item.phaseOffset) * 4;
     const pulse = Math.sin(time * 4) * 0.2 + 0.8;
 
     // Glow
