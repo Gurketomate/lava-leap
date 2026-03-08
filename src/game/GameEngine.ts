@@ -2,7 +2,7 @@ import type { Player, Platform, Coin, Particle, PowerUp, LevelDefinition, ItemPi
 import {
   GRAVITY, JUMP_FORCE, BOOST_FORCE, MOVE_SPEED,
   PLAYER_WIDTH, PLAYER_HEIGHT,
-  PLATFORM_WIDTH, PLATFORM_HEIGHT, PLATFORM_GAP_MIN, PLATFORM_GAP_MAX, PLATFORMS_BUFFER,
+  PLATFORM_WIDTH, PLATFORM_HEIGHT, PLATFORM_GAP_MIN, PLATFORM_GAP_MAX, PLATFORMS_BUFFER, getGapScale,
   LAVA_INITIAL_SPEED,
   COIN_RADIUS, COIN_SPAWN_CHANCE, COIN_MAGNET_RANGE,
   CAMERA_SMOOTH, SCORE_SCALE,
@@ -439,7 +439,9 @@ export class GameEngine {
     const levelId = this.currentLevelDef?.id ?? 1;
 
     while (this.highestPlatformY > targetY) {
-      const gap = PLATFORM_GAP_MIN + Math.random() * (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN);
+      const gapScale = getGapScale(levelId);
+      const scaledGapMax = PLATFORM_GAP_MIN + (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN) * gapScale;
+      const gap = PLATFORM_GAP_MIN + Math.random() * (scaledGapMax - PLATFORM_GAP_MIN);
       const newY = this.highestPlatformY - gap;
       let newX = Math.random() * (this.width - PLATFORM_WIDTH);
 
@@ -478,15 +480,19 @@ export class GameEngine {
       };
 
       if (type === 'moving') {
-        platform.moveSpeed = 60 + Math.random() * 80;
-        platform.moveRange = 50 + Math.random() * 80;
+        const speedScale = levelId >= 35 ? 1.3 + (levelId - 35) * 0.04 : 1.0;
+        platform.moveSpeed = (60 + Math.random() * 80) * speedScale;
+        platform.moveRange = (50 + Math.random() * 80) * (levelId >= 30 ? 1.15 : 1.0);
         platform.moveDir = Math.random() > 0.5 ? 1 : -1;
         platform.originX = newX;
       }
 
       if (type === 'vanishing') {
         platform.vanishTimer = 0;
-        platform.vanishDuration = 2.0 + Math.random() * 1.5;
+        // Shorter vanish windows in late game
+        const vanishBase = levelId >= 35 ? 1.5 : 2.0;
+        const vanishRange = levelId >= 35 ? 1.0 : 1.5;
+        platform.vanishDuration = vanishBase + Math.random() * vanishRange;
         platform.visible = true;
       }
 
