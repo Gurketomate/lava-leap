@@ -53,24 +53,49 @@ interface GameStore {
   loadPersisted: () => void;
 }
 
+const SAVE_VERSION = 1;
+
+const getDefaultSaveState = () => ({
+  highScore: 0,
+  totalCoins: 0,
+  upgradeLevels: {},
+  maxUnlockedLevel: 1,
+  levelStars: {},
+  endlessHighScore: 0,
+});
+
 const loadFromStorage = () => {
   try {
     const data = JSON.parse(localStorage.getItem('volcanoEscape') || '{}');
+
+    // Reset legacy/debug saves from pre-release builds
+    if (data.saveVersion !== SAVE_VERSION) {
+      return getDefaultSaveState();
+    }
+
     return {
-      highScore: data.highScore || 0,
-      totalCoins: data.totalCoins || 0,
-      upgradeLevels: data.upgradeLevels || {},
-      maxUnlockedLevel: data.maxUnlockedLevel || 1,
-      levelStars: data.levelStars || {},
-      endlessHighScore: data.endlessHighScore || 0,
+      highScore: Math.max(0, Number(data.highScore) || 0),
+      totalCoins: Math.max(0, Number(data.totalCoins) || 0),
+      upgradeLevels: typeof data.upgradeLevels === 'object' && data.upgradeLevels ? data.upgradeLevels : {},
+      maxUnlockedLevel: Math.min(LEVELS.length, Math.max(1, Number(data.maxUnlockedLevel) || 1)),
+      levelStars: typeof data.levelStars === 'object' && data.levelStars ? data.levelStars : {},
+      endlessHighScore: Math.max(0, Number(data.endlessHighScore) || 0),
     };
   } catch {
-    return { highScore: 0, totalCoins: 0, upgradeLevels: {}, maxUnlockedLevel: 1, levelStars: {}, endlessHighScore: 0 };
+    return getDefaultSaveState();
   }
 };
 
 const saveToStorage = (highScore: number, totalCoins: number, upgradeLevels: UpgradeLevels, maxUnlockedLevel: number, levelStars: LevelStars, endlessHighScore: number) => {
-  localStorage.setItem('volcanoEscape', JSON.stringify({ highScore, totalCoins, upgradeLevels, maxUnlockedLevel, levelStars, endlessHighScore }));
+  localStorage.setItem('volcanoEscape', JSON.stringify({
+    saveVersion: SAVE_VERSION,
+    highScore,
+    totalCoins,
+    upgradeLevels,
+    maxUnlockedLevel,
+    levelStars,
+    endlessHighScore,
+  }));
 };
 
 export const useGameStore = create<GameStore>((set, get) => ({
