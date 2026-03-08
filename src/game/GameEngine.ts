@@ -480,8 +480,9 @@ export class GameEngine {
       };
 
       if (type === 'moving') {
-        platform.moveSpeed = 60 + Math.random() * 80;
-        platform.moveRange = 50 + Math.random() * 80;
+        const speedScale = levelId >= 35 ? 1.3 + (levelId - 35) * 0.04 : 1.0;
+        platform.moveSpeed = (60 + Math.random() * 80) * speedScale;
+        platform.moveRange = (50 + Math.random() * 80) * (levelId >= 30 ? 1.15 : 1.0);
         platform.moveDir = Math.random() > 0.5 ? 1 : -1;
         platform.originX = newX;
       }
