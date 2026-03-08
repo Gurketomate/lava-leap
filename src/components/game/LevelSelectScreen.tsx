@@ -1,6 +1,7 @@
 import { useGameStore } from '@/stores/gameStore';
 import { LEVELS } from '@/game/constants';
 import { useSoundClick } from '@/hooks/useSoundClick';
+import EmberBackground from '@/components/game/EmberBackground';
 
 interface LevelSelectScreenProps {
   onSelectLevel: (levelId: number) => void;
@@ -12,7 +13,8 @@ const LevelSelectScreen = ({ onSelectLevel, onBack }: LevelSelectScreenProps) =>
   const handleBack = useSoundClick(onBack);
 
   return (
-    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm">
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm">
+      <EmberBackground />
       <div className="flex flex-col items-center gap-6 animate-fade-in max-w-lg w-full px-4">
         <div className="text-center">
           <h2 className="text-3xl font-display font-bold text-foreground">SELECT LEVEL</h2>
