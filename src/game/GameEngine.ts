@@ -213,10 +213,27 @@ export class GameEngine {
     this.currentLevelDef = levelDef;
   }
 
-  pickPlatformType(): Platform['type'] {
-    const level = this.currentLevelDef;
-    if (!level) return 'normal';
+  /** Get endless mode difficulty scaling based on current score */
+  getEndlessDifficulty() {
+    const s = this.score;
+    const t = Math.min(1, s / 5000); // full difficulty at score 5000
+    return {
+      normalChance: Math.max(0.10, 0.70 - t * 0.60),
+      breakableChance: 0.05 + t * 0.20,
+      movingChance: 0.05 + t * 0.30,
+      boostChance: 0.08,
+      rewardChance: 0.02 + t * 0.05,
+      lavaControlChance: 0.02 + t * 0.04,
+      dangerChance: t * 0.12,
+      invincibleChance: 0.01 + t * 0.03,
+      vanishingChance: t * 0.14,
+      platformWidthMod: Math.max(0.55, 1.15 - t * 0.60),
+      lavaSpeedMod: 0.8 + t * 2.2,
+      gapScale: 1.0 + t * 0.24,
+    };
+  }
 
+  pickPlatformType(): Platform['type'] {
     const stabilizerReduction = this.platformStabilizerStacks * 0.05;
 
     if (this.inNoSafeZone) {
@@ -229,26 +246,41 @@ export class GameEngine {
       return 'boost';
     }
 
-    const breakable = Math.max(0, level.breakableChance - stabilizerReduction);
+    // Get chances from level def or endless scaling
+    let chances: {
+      normalChance: number; breakableChance: number; movingChance: number;
+      boostChance: number; rewardChance: number; lavaControlChance: number;
+      dangerChance: number; invincibleChance: number; vanishingChance: number;
+    };
+
+    if (this.isEndless) {
+      chances = this.getEndlessDifficulty();
+    } else {
+      const level = this.currentLevelDef;
+      if (!level) return 'normal';
+      chances = level;
+    }
+
+    const breakable = Math.max(0, chances.breakableChance - stabilizerReduction);
     const r = Math.random();
     let cumulative = 0;
 
-    cumulative += level.boostChance;
+    cumulative += chances.boostChance;
     if (r < cumulative) return 'boost';
-    cumulative += level.rewardChance;
+    cumulative += chances.rewardChance;
     if (r < cumulative) return 'reward';
-    cumulative += level.lavaControlChance;
+    cumulative += chances.lavaControlChance;
     if (r < cumulative) return 'lavaControl';
-    cumulative += level.dangerChance;
+    cumulative += chances.dangerChance;
     if (r < cumulative) {
       if (this.lastPlatformType === 'danger') return 'normal';
       return 'danger';
     }
-    cumulative += level.invincibleChance;
+    cumulative += chances.invincibleChance;
     if (r < cumulative) return 'invincible';
-    cumulative += level.vanishingChance;
+    cumulative += chances.vanishingChance;
     if (r < cumulative) return 'vanishing';
-    cumulative += level.movingChance;
+    cumulative += chances.movingChance;
     if (r < cumulative) return 'moving';
     cumulative += breakable;
     if (r < cumulative) return 'breakable';
