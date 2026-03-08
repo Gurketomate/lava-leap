@@ -1293,6 +1293,21 @@ export class GameEngine {
     }
     ctx.globalAlpha = 1;
 
+    // Lava embers (rendered in world space, just above lava)
+    for (const e of this.lavaEmbers) {
+      const alpha = Math.min(1, e.life / (e.maxLife * 0.3)) * e.opacity;
+      if (alpha <= 0) continue;
+      const grad = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.size * 3);
+      grad.addColorStop(0, `rgba(255, 120, 20, ${alpha * 0.35})`);
+      grad.addColorStop(1, 'rgba(255, 60, 0, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(e.x - e.size * 3, e.y - e.size * 3, e.size * 6, e.size * 6);
+      ctx.fillStyle = `rgba(255, ${150 + Math.random() * 60 | 0}, 30, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     this.renderLava(ctx);
     ctx.restore();
 
