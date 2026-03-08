@@ -10,26 +10,12 @@ interface MainMenuProps {
   onSettings: () => void;
 }
 
-interface Ember {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
-  opacity: number;
-  life: number;
-  maxLife: number;
-}
-
 const MainMenu = ({ onStart, onShop, onSettings }: MainMenuProps) => {
   const { highScore, totalCoins } = useGameStore();
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const handleStart = useSoundClick(onStart);
   const handleShop = useSoundClick(onShop);
   const handleSettings = useSoundClick(onSettings);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const embersRef = useRef<Ember[]>([]);
-  const animRef = useRef<number>(0);
 
   const toggleFullscreen = useCallback(() => {
     if (document.fullscreenElement) {
