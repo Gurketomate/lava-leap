@@ -489,7 +489,10 @@ export class GameEngine {
 
       if (type === 'vanishing') {
         platform.vanishTimer = 0;
-        platform.vanishDuration = 2.0 + Math.random() * 1.5;
+        // Shorter vanish windows in late game
+        const vanishBase = levelId >= 35 ? 1.5 : 2.0;
+        const vanishRange = levelId >= 35 ? 1.0 : 1.5;
+        platform.vanishDuration = vanishBase + Math.random() * vanishRange;
         platform.visible = true;
       }
 
