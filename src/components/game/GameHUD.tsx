@@ -2,6 +2,7 @@ import { useGameStore } from '@/stores/gameStore';
 import { LEVELS } from '@/game/constants';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { ActiveEffect } from '@/game/types';
+import type { GameMode } from '@/stores/gameStore';
 
 const ITEM_ICONS: Record<string, string> = {
   coinMagnet: '🧲',
