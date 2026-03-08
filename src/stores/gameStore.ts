@@ -10,6 +10,8 @@ interface LevelStars {
   [levelId: number]: number;
 }
 
+export type GameMode = 'level' | 'endless';
+
 interface GameStore {
   screen: GameScreen;
   score: number;
@@ -22,6 +24,8 @@ interface GameStore {
   upgradeLevels: UpgradeLevels;
   currentLevel: number;
   maxUnlockedLevel: number;
+  gameMode: GameMode;
+  endlessHighScore: number;
 
   // Star tracking per run
   runDeaths: number;
@@ -37,6 +41,7 @@ interface GameStore {
   setPhase: (phase: number) => void;
   setScreenShake: (shake: number) => void;
   setCurrentLevel: (level: number) => void;
+  setGameMode: (mode: GameMode) => void;
   setRunStats: (deaths: number, coinPercent: number, totalSpawned: number) => void;
   completeLevel: () => void;
   gameOver: () => void;
@@ -57,14 +62,15 @@ const loadFromStorage = () => {
       upgradeLevels: data.upgradeLevels || {},
       maxUnlockedLevel: 50,
       levelStars: data.levelStars || {},
+      endlessHighScore: data.endlessHighScore || 0,
     };
   } catch {
-    return { highScore: 0, totalCoins: 0, upgradeLevels: {}, maxUnlockedLevel: 1, levelStars: {} };
+    return { highScore: 0, totalCoins: 0, upgradeLevels: {}, maxUnlockedLevel: 1, levelStars: {}, endlessHighScore: 0 };
   }
 };
 
-const saveToStorage = (highScore: number, totalCoins: number, upgradeLevels: UpgradeLevels, maxUnlockedLevel: number, levelStars: LevelStars) => {
-  localStorage.setItem('volcanoEscape', JSON.stringify({ highScore, totalCoins, upgradeLevels, maxUnlockedLevel, levelStars }));
+const saveToStorage = (highScore: number, totalCoins: number, upgradeLevels: UpgradeLevels, maxUnlockedLevel: number, levelStars: LevelStars, endlessHighScore: number) => {
+  localStorage.setItem('volcanoEscape', JSON.stringify({ highScore, totalCoins, upgradeLevels, maxUnlockedLevel, levelStars, endlessHighScore }));
 };
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -79,6 +85,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   screenShake: 0,
   currentLevel: 1,
   maxUnlockedLevel: 1,
+  gameMode: 'level',
+  endlessHighScore: 0,
   runDeaths: 0,
   runCoinPercent: 0,
   runTotalCoinsSpawned: 0,
@@ -92,6 +100,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setPhase: (phase) => set({ phase }),
   setScreenShake: (screenShake) => set({ screenShake }),
   setCurrentLevel: (currentLevel) => set({ currentLevel }),
+  setGameMode: (gameMode) => set({ gameMode }),
 
   setRunStats: (deaths, coinPercent, totalSpawned) => set({ runDeaths: deaths, runCoinPercent: coinPercent, runTotalCoinsSpawned: totalSpawned }),
 
@@ -111,7 +120,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const prev = newLevelStars[s.currentLevel] || 0;
     newLevelStars[s.currentLevel] = Math.max(prev, stars);
 
-    saveToStorage(newHigh, newTotal, newLevels, newUnlocked, newLevelStars);
+    saveToStorage(newHigh, newTotal, newLevels, newUnlocked, newLevelStars, s.endlessHighScore);
     set({
       screen: 'levelComplete',
       highScore: newHigh,
@@ -129,8 +138,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const newTotal = s.totalCoins + s.coins;
     const newLevels = { ...s.upgradeLevels };
     if (newLevels['startShield'] > 0) newLevels['startShield'] = 0;
-    saveToStorage(newHigh, newTotal, newLevels, s.maxUnlockedLevel, s.levelStars);
-    set({ screen: 'gameOver', highScore: newHigh, totalCoins: newTotal, upgradeLevels: newLevels });
+    const newEndlessHigh = s.gameMode === 'endless' ? Math.max(s.endlessHighScore, s.score) : s.endlessHighScore;
+    saveToStorage(newHigh, newTotal, newLevels, s.maxUnlockedLevel, s.levelStars, newEndlessHigh);
+    set({ screen: 'gameOver', highScore: newHigh, totalCoins: newTotal, upgradeLevels: newLevels, endlessHighScore: newEndlessHigh });
   },
 
   resetRun: () => set({
@@ -156,7 +166,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (s.totalCoins < cost) return false;
     const newLevels = { ...s.upgradeLevels, [id]: level + 1 };
     const newTotal = s.totalCoins - cost;
-    saveToStorage(s.highScore, newTotal, newLevels, s.maxUnlockedLevel, s.levelStars);
+    saveToStorage(s.highScore, newTotal, newLevels, s.maxUnlockedLevel, s.levelStars, s.endlessHighScore);
     set({ totalCoins: newTotal, upgradeLevels: newLevels });
     return true;
   },

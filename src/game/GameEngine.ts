@@ -35,7 +35,8 @@ const ITEM_WEIGHTS: Record<ItemType, number> = {
   doubleJump: 0.125,  // 1% of 8% ≈ 12.5%
 };
 
-function getItemSpawnChance(levelId: number): number {
+function getItemSpawnChance(levelId: number, isEndless: boolean = false): number {
+  if (isEndless) return 0.07;
   if (levelId <= 5) return 0.05;
   if (levelId <= 15) return 0.07;
   return 0.08;
@@ -95,6 +96,7 @@ export class GameEngine {
   // Level system
   currentLevelDef: LevelDefinition | null = null;
   levelComplete = false;
+  isEndless = false;
   levelCompleteTimer = 0;
 
   // Power-up state (from items)
@@ -212,10 +214,27 @@ export class GameEngine {
     this.currentLevelDef = levelDef;
   }
 
-  pickPlatformType(): Platform['type'] {
-    const level = this.currentLevelDef;
-    if (!level) return 'normal';
+  /** Get endless mode difficulty scaling based on current score */
+  getEndlessDifficulty() {
+    const s = this.score;
+    const t = Math.min(1, s / 5000); // full difficulty at score 5000
+    return {
+      normalChance: Math.max(0.10, 0.70 - t * 0.60),
+      breakableChance: 0.05 + t * 0.20,
+      movingChance: 0.05 + t * 0.30,
+      boostChance: 0.08,
+      rewardChance: 0.02 + t * 0.05,
+      lavaControlChance: 0.02 + t * 0.04,
+      dangerChance: t * 0.12,
+      invincibleChance: 0.01 + t * 0.03,
+      vanishingChance: t * 0.14,
+      platformWidthMod: Math.max(0.55, 1.15 - t * 0.60),
+      lavaSpeedMod: 0.8 + t * 2.2,
+      gapScale: 1.0 + t * 0.24,
+    };
+  }
 
+  pickPlatformType(): Platform['type'] {
     const stabilizerReduction = this.platformStabilizerStacks * 0.05;
 
     if (this.inNoSafeZone) {
@@ -228,26 +247,41 @@ export class GameEngine {
       return 'boost';
     }
 
-    const breakable = Math.max(0, level.breakableChance - stabilizerReduction);
+    // Get chances from level def or endless scaling
+    let chances: {
+      normalChance: number; breakableChance: number; movingChance: number;
+      boostChance: number; rewardChance: number; lavaControlChance: number;
+      dangerChance: number; invincibleChance: number; vanishingChance: number;
+    };
+
+    if (this.isEndless) {
+      chances = this.getEndlessDifficulty();
+    } else {
+      const level = this.currentLevelDef;
+      if (!level) return 'normal';
+      chances = level;
+    }
+
+    const breakable = Math.max(0, chances.breakableChance - stabilizerReduction);
     const r = Math.random();
     let cumulative = 0;
 
-    cumulative += level.boostChance;
+    cumulative += chances.boostChance;
     if (r < cumulative) return 'boost';
-    cumulative += level.rewardChance;
+    cumulative += chances.rewardChance;
     if (r < cumulative) return 'reward';
-    cumulative += level.lavaControlChance;
+    cumulative += chances.lavaControlChance;
     if (r < cumulative) return 'lavaControl';
-    cumulative += level.dangerChance;
+    cumulative += chances.dangerChance;
     if (r < cumulative) {
       if (this.lastPlatformType === 'danger') return 'normal';
       return 'danger';
     }
-    cumulative += level.invincibleChance;
+    cumulative += chances.invincibleChance;
     if (r < cumulative) return 'invincible';
-    cumulative += level.vanishingChance;
+    cumulative += chances.vanishingChance;
     if (r < cumulative) return 'vanishing';
-    cumulative += level.movingChance;
+    cumulative += chances.movingChance;
     if (r < cumulative) return 'moving';
     cumulative += breakable;
     if (r < cumulative) return 'breakable';
@@ -498,11 +532,12 @@ export class GameEngine {
 
   generatePlatformsUpTo(targetY: number) {
     const lastPlatform = this.platforms.length > 0 ? this.platforms[this.platforms.length - 1] : null;
-    const widthMod = this.currentLevelDef?.platformWidthMod ?? 1;
+    const endlessDiff = this.isEndless ? this.getEndlessDifficulty() : null;
+    const widthMod = endlessDiff ? endlessDiff.platformWidthMod : (this.currentLevelDef?.platformWidthMod ?? 1);
     const levelId = this.currentLevelDef?.id ?? 1;
 
     while (this.highestPlatformY > targetY) {
-      const gapScale = getGapScale(levelId);
+      const gapScale = this.isEndless ? (endlessDiff?.gapScale ?? 1.0) : getGapScale(levelId);
       const scaledGapMax = PLATFORM_GAP_MIN + (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN) * gapScale;
       const gap = PLATFORM_GAP_MIN + Math.random() * (scaledGapMax - PLATFORM_GAP_MIN);
       const newY = this.highestPlatformY - gap;
@@ -543,7 +578,9 @@ export class GameEngine {
       };
 
       if (type === 'moving') {
-        const speedScale = levelId >= 35 ? 1.3 + (levelId - 35) * 0.04 : 1.0;
+        const speedScale = this.isEndless
+          ? (1.0 + Math.min(1, this.score / 5000) * 0.5)
+          : (levelId >= 35 ? 1.3 + (levelId - 35) * 0.04 : 1.0);
         platform.moveSpeed = (60 + Math.random() * 80) * speedScale;
         platform.moveRange = (50 + Math.random() * 80) * (levelId >= 30 ? 1.15 : 1.0);
         platform.moveDir = Math.random() > 0.5 ? 1 : -1;
@@ -662,7 +699,7 @@ export class GameEngine {
       // Item pickup spawning (rare, distance-gated, never on breakable)
       this.platformsSinceLastItem++;
       const platIndex = this.platforms.length - 1;
-      const spawnChance = getItemSpawnChance(levelId);
+      const spawnChance = getItemSpawnChance(levelId, this.isEndless);
       if (['normal', 'moving'].includes(type) && newY < this.lavaY - 300 && this.platformsSinceLastItem >= ITEM_MIN_PLATFORM_GAP) {
         if (Math.random() < spawnChance) {
           const itemType = pickWeightedItem();
@@ -924,10 +961,12 @@ export class GameEngine {
 
     // === ADAPTIVE LAVA SYSTEM (speed-based) ===
     const lavaSlowMult = Math.pow(0.7, this.lavaSlowStacks);
-    const levelSpeedMod = this.currentLevelDef?.lavaSpeedMod ?? 1;
+    const levelSpeedMod = this.isEndless
+      ? (this.getEndlessDifficulty().lavaSpeedMod)
+      : (this.currentLevelDef?.lavaSpeedMod ?? 1);
 
     let endAccel = 1;
-    if (this.currentLevelDef) {
+    if (!this.isEndless && this.currentLevelDef) {
       const progress = this.score / this.currentLevelDef.targetHeight;
       if (progress > 0.8) {
         const endProgress = (progress - 0.8) / 0.2;
@@ -993,8 +1032,8 @@ export class GameEngine {
     this.score = Math.floor(heightReached / SCORE_SCALE);
     this.onScoreUpdate(this.score);
 
-    // Level complete
-    if (this.currentLevelDef && this.score >= this.currentLevelDef.targetHeight && !this.levelComplete) {
+    // Level complete (only in level mode)
+    if (!this.isEndless && this.currentLevelDef && this.score >= this.currentLevelDef.targetHeight && !this.levelComplete) {
       this.levelComplete = true;
       this.levelCompleteTimer = 0;
       this.lavaY = this.lavaY + 200;
@@ -1313,8 +1352,8 @@ export class GameEngine {
       ctx.fillRect(0, 0, w, h);
     }
 
-    // Level progress indicator
-    if (this.currentLevelDef) {
+    // Level progress indicator (only in level mode)
+    if (!this.isEndless && this.currentLevelDef) {
       const progress = Math.min(1, this.score / this.currentLevelDef.targetHeight);
       const barW = 4;
       const barH = h * 0.6;
