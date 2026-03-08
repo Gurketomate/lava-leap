@@ -282,7 +282,7 @@ export class GameEngine {
     this.jumpBufferTimer = 0;
     this.wasOnGround = false;
     this.jumpRequested = false;
-    this.reachability = computeReachability(this.jumpBonus);
+    this.reachability = computeReachability(0);
     this.elapsedTime = 0;
     this.noSafeZoneTimer = NO_SAFE_ZONE_INTERVAL;
     this.inNoSafeZone = false;
