@@ -387,27 +387,40 @@ export class GameEngine {
     // 3. Push lava down for recovery room (60% of screen below player)
     this.lavaY = Math.max(this.lavaY, p.y + this.height * 0.6);
 
-    // 4. Reachability check — ensure at least one platform above is reachable
-    const limits = computeReachability(this.jumpBonus);
-    const hasReachableAbove = this.platforms.some(plat => {
-      if (plat.broken) return false;
-      if (plat.y >= spawnPlatY) return false; // only check platforms above
-      return isPlatformReachable(
-        spawnPlatX, spawnPlatW, spawnPlatY,
-        plat.x, plat.width, plat.y,
-        limits,
-      );
-    });
+    // 4. Reachability check — validate the immediate next platform above
+    const limits = computeReachability(0);
+    const nextPlatformAbove = this.platforms
+      .filter((plat) => !plat.broken && !(plat.type === 'vanishing' && plat.visible === false) && plat.y < spawnPlatY)
+      .reduce<Platform | null>((closest, plat) => {
+        if (!closest) return plat;
+        return plat.y > closest.y ? plat : closest; // larger y while still above = nearest above
+      }, null);
 
-    if (!hasReachableAbove) {
-      // Spawn a safety platform above at 60% of safe jump height
-      const safetyY = spawnPlatY - limits.safeVerticalDist * 0.6;
-      const safetyW = 100;
-      const safetyX = Math.max(0, Math.min(this.width - safetyW,
-        spawnPlatX + spawnPlatW / 2 - safetyW / 2));
+    const isNextReachable = !!nextPlatformAbove && isPlatformReachable(
+      spawnPlatX,
+      spawnPlatW,
+      spawnPlatY,
+      nextPlatformAbove.x,
+      nextPlatformAbove.width,
+      nextPlatformAbove.y,
+      limits,
+    );
+
+    if (!isNextReachable) {
+      // Spawn temporary rescue platform in guaranteed reachable jump arc
+      const safetyW = 110;
+      const safetyY = spawnPlatY - Math.max(70, limits.safeVerticalDist * 0.55);
+      const safetyX = Math.max(
+        0,
+        Math.min(this.width - safetyW, spawnPlatX + spawnPlatW / 2 - safetyW / 2),
+      );
       this.platforms.push({
-        x: safetyX, y: safetyY, width: safetyW, height: PLATFORM_HEIGHT,
-        type: 'normal', broken: false,
+        x: safetyX,
+        y: safetyY,
+        width: safetyW,
+        height: PLATFORM_HEIGHT,
+        type: 'normal',
+        broken: false,
       });
     }
 
