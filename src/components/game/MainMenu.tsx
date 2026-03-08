@@ -1,7 +1,8 @@
 import { useGameStore } from '@/stores/gameStore';
 import { useSoundClick } from '@/hooks/useSoundClick';
+import EmberBackground from '@/components/game/EmberBackground';
 import { Settings, Maximize, Minimize } from 'lucide-react';
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback } from 'react';
 
 interface MainMenuProps {
   onStart: () => void;
