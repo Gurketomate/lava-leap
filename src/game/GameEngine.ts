@@ -545,16 +545,15 @@ export class GameEngine {
         platform.visible = true;
       }
 
-      // Reward platforms: narrower + harder
+      // Reward platforms: narrower, mostly static for clarity
       if (type === 'reward') {
         platform.width = Math.max(30, platWidth * 0.55);
-        if (Math.random() < 0.6) {
-          platform.moveSpeed = 60 + Math.random() * 70;
-          platform.moveRange = 50 + Math.random() * 70;
+        // Only 15% of reward platforms move (rare challenge)
+        if (Math.random() < 0.15) {
+          platform.moveSpeed = 40 + Math.random() * 50;
+          platform.moveRange = 40 + Math.random() * 50;
           platform.moveDir = Math.random() > 0.5 ? 1 : -1;
           platform.originX = newX;
-        } else {
-          platform.breakTimer = 0.4;
         }
         platform.y -= 8 + Math.random() * 12;
 
