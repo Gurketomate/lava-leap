@@ -603,17 +603,19 @@ export class GameEngine {
             angle: 0,
           });
         } else {
-          // Multi-coin cluster: use patterns that follow jump trajectory
-          const pattern = Math.random();
+          // Multi-coin cluster: jump-trajectory patterns only
+          // Cap spread to platform width so all coins are collectible in one jump
           const centerX = newX + platWidth / 2;
-          const spacing = 16;
+          const maxSpread = Math.min(platWidth * 0.8, coinCount * 14);
+          const spacing = maxSpread / Math.max(coinCount - 1, 1);
+          const pattern = Math.random();
 
-          if (pattern < 0.4) {
-            // Arc pattern — coins follow a parabolic arc above the platform
+          if (pattern < 0.45) {
+            // Arc pattern — parabolic arc matching jump trajectory
             const halfCount = (coinCount - 1) / 2;
             for (let c = 0; c < coinCount; c++) {
               const t = (c - halfCount) / Math.max(halfCount, 1); // -1 to 1
-              const arcHeight = 18 * (1 - t * t); // parabola peak in center
+              const arcHeight = 14 * (1 - t * t); // gentle parabola
               this.coins.push({
                 x: centerX + t * halfCount * spacing,
                 y: newY - 22 - arcHeight,
@@ -622,24 +624,12 @@ export class GameEngine {
                 angle: 0,
               });
             }
-          } else if (pattern < 0.7) {
-            // Horizontal line — evenly spaced above platform
-            const halfCount = (coinCount - 1) / 2;
-            for (let c = 0; c < coinCount; c++) {
-              this.coins.push({
-                x: centerX + (c - halfCount) * spacing,
-                y: newY - 28,
-                radius: COIN_RADIUS,
-                collected: false,
-                angle: 0,
-              });
-            }
           } else {
-            // Vertical column — guides player upward toward next jump
+            // Vertical column — guides player upward along jump path
             for (let c = 0; c < coinCount; c++) {
               this.coins.push({
                 x: centerX,
-                y: newY - 22 - c * 14,
+                y: newY - 22 - c * 13,
                 radius: COIN_RADIUS,
                 collected: false,
                 angle: 0,
