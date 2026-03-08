@@ -455,23 +455,24 @@ export class GameEngine {
   /** Apply item pickup effect */
   applyItemEffect(type: ItemType) {
     playPowerUp();
+    const ITEM_DURATION = 6; // unified duration for all items
     switch (type) {
       case 'coinMagnet':
         this.hasCoinMagnet = true;
-        this.addActiveEffect('coinMagnet', 6);
+        this.addActiveEffect('coinMagnet', ITEM_DURATION);
         break;
       case 'lavaBrake':
-        this.lavaSpeedMults.push({ mult: 0.4, remaining: 5, duration: 5 });
-        this.addActiveEffect('lavaBrake', 5);
+        this.lavaSpeedMults.push({ mult: 0.4, remaining: ITEM_DURATION, duration: ITEM_DURATION });
+        this.addActiveEffect('lavaBrake', ITEM_DURATION);
         break;
       case 'shield':
         this.hasShield = true;
-        // Shield lasts until used, no timer
+        this.addActiveEffect('shield', ITEM_DURATION);
         break;
       case 'doubleJump':
         this.hasDoubleJump = true;
         this.player.doubleJumpUsed = false;
-        this.addActiveEffect('doubleJump', 999); // visual indicator, removed on use+land
+        this.addActiveEffect('doubleJump', ITEM_DURATION);
         break;
     }
   }
@@ -716,6 +717,8 @@ export class GameEngine {
       if (e.remaining <= 0) {
         // Effect expired — clean up
         if (e.type === 'coinMagnet') this.hasCoinMagnet = false;
+        if (e.type === 'shield') this.hasShield = false;
+        if (e.type === 'doubleJump') { this.hasDoubleJump = false; this.player.doubleJumpUsed = true; }
         return false;
       }
       return true;
