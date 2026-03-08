@@ -1351,8 +1351,8 @@ export class GameEngine {
       ctx.fillRect(0, 0, w, h);
     }
 
-    // Level progress indicator
-    if (this.currentLevelDef) {
+    // Level progress indicator (only in level mode)
+    if (!this.isEndless && this.currentLevelDef) {
       const progress = Math.min(1, this.score / this.currentLevelDef.targetHeight);
       const barW = 4;
       const barH = h * 0.6;
