@@ -3,6 +3,7 @@ import { useGameStore } from '@/stores/gameStore';
 import { useAdStore } from '@/stores/adStore';
 import { LEVELS } from '@/game/constants';
 import { useSoundClick } from '@/hooks/useSoundClick';
+import EmberBackground from '@/components/game/EmberBackground';
 
 interface GameOverScreenProps {
   onRestart: () => void;
