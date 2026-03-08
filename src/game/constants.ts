@@ -10,12 +10,12 @@ export const PLATFORM_HEIGHT = 14;
 export const PLATFORM_GAP_MIN = 60;
 export const PLATFORM_GAP_MAX = 120;
 
-// Gap scaling per level (multiplier on gap range)
+// Gap scaling per level (multiplier on gap range) — capped to stay within base jump reach
 export function getGapScale(levelId: number): number {
   if (levelId <= 15) return 1.0;
-  if (levelId <= 30) return 1.0 + (levelId - 15) * 0.015; // up to 1.225
-  if (levelId <= 50) return 1.225 + (levelId - 30) * 0.02; // up to 1.625
-  return 1.625;
+  if (levelId <= 30) return 1.0 + (levelId - 15) * 0.008; // up to 1.12
+  if (levelId <= 50) return 1.12 + (levelId - 30) * 0.006; // up to 1.24
+  return 1.24;
 }
 export const PLATFORMS_BUFFER = 800;
 

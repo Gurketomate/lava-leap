@@ -116,7 +116,7 @@ export class GameEngine {
   wasOnGround = false;
   jumpRequested = false;
 
-  // Reachability
+  // Reachability — always computed with base jump (no upgrades) to guarantee levels are beatable without upgrades
   reachability: ReachabilityLimits = computeReachability(0);
 
   // Analytics
@@ -201,7 +201,8 @@ export class GameEngine {
     this.coinSpawnBonus = coinSpawnBonus;
     this.lavaResistBonus = lavaResistBonus;
     this.startWithShield = startWithShield;
-    this.reachability = computeReachability(jumpBonus);
+    // Always use base reachability for platform generation — upgrades make it easier, never required
+    this.reachability = computeReachability(0);
   }
 
   setLevel(levelDef: LevelDefinition) {
@@ -281,7 +282,7 @@ export class GameEngine {
     this.jumpBufferTimer = 0;
     this.wasOnGround = false;
     this.jumpRequested = false;
-    this.reachability = computeReachability(this.jumpBonus);
+    this.reachability = computeReachability(0);
     this.elapsedTime = 0;
     this.noSafeZoneTimer = NO_SAFE_ZONE_INTERVAL;
     this.inNoSafeZone = false;
