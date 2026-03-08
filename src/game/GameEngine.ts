@@ -1,6 +1,6 @@
 import type { Player, Platform, Coin, Particle, PowerUp, LevelDefinition, ItemPickup, ActiveEffect, ItemType } from './types';
 import {
-  GRAVITY, JUMP_FORCE, BOOST_FORCE, MOVE_SPEED,
+  GRAVITY, JUMP_FORCE, MOVE_SPEED,
   PLAYER_WIDTH, PLAYER_HEIGHT,
   PLATFORM_WIDTH, PLATFORM_HEIGHT, PLATFORM_GAP_MIN, PLATFORM_GAP_MAX, PLATFORMS_BUFFER, getGapScale,
   LAVA_INITIAL_SPEED,
@@ -23,16 +23,16 @@ type Callback = (data: any) => void;
 const ITEM_DEFINITIONS: { type: ItemType; icon: string; color: string }[] = [
   { type: 'coinMagnet', icon: '🧲', color: '#9b59b6' },
   { type: 'lavaBrake', icon: '❄️', color: '#3498db' },
-  { type: 'shield', icon: '🛡️', color: '#f1c40f' },
+  { type: 'shield', icon: '🛡️', color: '#3498db' },
   { type: 'doubleJump', icon: '🪶', color: '#ecf0f1' },
 ];
 
 // Item spawn probabilities (weighted)
 const ITEM_WEIGHTS: Record<ItemType, number> = {
-  coinMagnet: 0.375,  // 3% of 8% ≈ 37.5% of item pool
-  lavaBrake: 0.25,    // 2% of 8% ≈ 25%
-  shield: 0.25,       // 2% of 8% ≈ 25%
-  doubleJump: 0.125,  // 1% of 8% ≈ 12.5%
+  coinMagnet: 0.375,
+  lavaBrake: 0.25,
+  shield: 0.25,
+  doubleJump: 0.125,
 };
 
 function getItemSpawnChance(levelId: number, isEndless: boolean = false): number {
@@ -53,6 +53,15 @@ function pickWeightedItem(): ItemType {
   }
   return 'coinMagnet';
 }
+
+// Lava instant shift amounts
+const LAVA_DANGER_SHIFT = -35; // lava moves UP (closer to player)
+const LAVA_ICE_SHIFT = 35;     // lava moves DOWN (away from player)
+
+// Shield platform spawn control
+const SHIELD_PLATFORM_MIN_GAP = 120; // minimum platforms between shield platforms
+const SHIELD_PLATFORM_MAX_GAP = 200; // max gap in endless
+const SHIELD_PLATFORM_LEVEL_INTERVAL = 10; // roughly every N levels in level mode
 
 export class GameEngine {
   canvas: HTMLCanvasElement;
@@ -84,10 +93,6 @@ export class GameEngine {
   animId = 0;
   backgroundLayers: { offset: number; speed: number; shapes: { x: number; y: number; r: number }[] }[] = [];
 
-  // Platform effect timers
-  invincibleTimer = 0;
-  isInvincible = false;
-
   // Lava speed multiplier system
   lavaSpeedMults: { mult: number; remaining: number; duration: number }[] = [];
 
@@ -102,9 +107,14 @@ export class GameEngine {
   // Power-up state (from items)
   hasDoubleJump = false;
   hasCoinMagnet = false;
-  hasShield = false;
+  hasShield = false;         // temporary shield from item (has timer)
+  hasPermanentShield = false; // permanent shield from golden platform (no timer, lasts until consumed)
   lavaSlowStacks = 0;
   platformStabilizerStacks = 0;
+
+  // Shield platform spawn tracking
+  platformsSinceLastShieldPlatform = 0;
+  totalPlatformsGenerated = 0;
 
   // Permanent upgrade bonuses
   jumpBonus = 0;
@@ -118,7 +128,7 @@ export class GameEngine {
   wasOnGround = false;
   jumpRequested = false;
 
-  // Reachability — always computed with base jump (no upgrades) to guarantee levels are beatable without upgrades
+  // Reachability
   reachability: ReachabilityLimits = computeReachability(0);
 
   // Analytics
@@ -143,7 +153,7 @@ export class GameEngine {
   // Double jump visual timer
   doubleJumpFlashTimer = 0;
 
-  // Last stable platform the player landed on (for revive) — direct reference
+  // Last stable platform the player landed on (for revive)
   lastLandedPlatformRef: Platform | null = null;
 
   // Revive grace state
@@ -206,7 +216,6 @@ export class GameEngine {
     this.coinSpawnBonus = coinSpawnBonus;
     this.lavaResistBonus = lavaResistBonus;
     this.startWithShield = startWithShield;
-    // Always use base reachability for platform generation — upgrades make it easier, never required
     this.reachability = computeReachability(0);
   }
 
@@ -217,20 +226,15 @@ export class GameEngine {
   /** Get endless mode difficulty scaling based on current score */
   getEndlessDifficulty() {
     const s = this.score;
-    // Fast ramp: noticeable difficulty by score 300, full difficulty at 1500
     const t = Math.min(1, s / 1500);
-    // Extra curve: front-load the difficulty increase
-    const t2 = t * (2 - t); // ease-out: rises fast early, plateaus later
+    const t2 = t * (2 - t);
     return {
-      normalChance: Math.max(0.05, 0.55 - t2 * 0.50),
+      normalChance: Math.max(0.10, 0.60 - t2 * 0.50),
       breakableChance: 0.08 + t2 * 0.22,
       movingChance: 0.12 + t2 * 0.28,
-      boostChance: Math.max(0.04, 0.08 - t2 * 0.04),
       rewardChance: 0.02 + t2 * 0.05,
       lavaControlChance: 0.03 + t2 * 0.04,
       dangerChance: 0.02 + t2 * 0.16,
-      invincibleChance: 0.01 + t2 * 0.03,
-      vanishingChance: 0.03 + t2 * 0.15,
       platformWidthMod: Math.max(0.50, 1.05 - t2 * 0.55),
       lavaSpeedMod: 1.0 + t2 * 2.5,
       gapScale: 1.0 + t2 * 0.24,
@@ -242,19 +246,17 @@ export class GameEngine {
 
     if (this.inNoSafeZone) {
       const r = Math.random();
-      if (r < 0.25) return 'moving';
-      if (r < 0.45) return 'breakable';
-      if (r < 0.55) return 'vanishing';
+      if (r < 0.30) return 'moving';
+      if (r < 0.50) return 'breakable';
       if (r < 0.65) return 'reward';
-      if (r < 0.75) return 'lavaControl';
-      return 'boost';
+      if (r < 0.80) return 'lavaControl';
+      if (r < 0.90) return 'danger';
+      return 'normal';
     }
 
-    // Get chances from level def or endless scaling
     let chances: {
       normalChance: number; breakableChance: number; movingChance: number;
-      boostChance: number; rewardChance: number; lavaControlChance: number;
-      dangerChance: number; invincibleChance: number; vanishingChance: number;
+      rewardChance: number; lavaControlChance: number; dangerChance: number;
     };
 
     if (this.isEndless) {
@@ -269,8 +271,6 @@ export class GameEngine {
     const r = Math.random();
     let cumulative = 0;
 
-    cumulative += chances.boostChance;
-    if (r < cumulative) return 'boost';
     cumulative += chances.rewardChance;
     if (r < cumulative) return 'reward';
     cumulative += chances.lavaControlChance;
@@ -280,16 +280,37 @@ export class GameEngine {
       if (this.lastPlatformType === 'danger') return 'normal';
       return 'danger';
     }
-    cumulative += chances.invincibleChance;
-    if (r < cumulative) return 'invincible';
-    cumulative += chances.vanishingChance;
-    if (r < cumulative) return 'vanishing';
     cumulative += chances.movingChance;
     if (r < cumulative) return 'moving';
     cumulative += breakable;
     if (r < cumulative) return 'breakable';
 
     return 'normal';
+  }
+
+  /** Check if a shield platform should spawn (very rare) */
+  shouldSpawnShieldPlatform(): boolean {
+    this.platformsSinceLastShieldPlatform++;
+    
+    if (this.isEndless) {
+      // Endless: spawn every 120-200 platforms
+      if (this.platformsSinceLastShieldPlatform >= SHIELD_PLATFORM_MIN_GAP) {
+        const chance = (this.platformsSinceLastShieldPlatform - SHIELD_PLATFORM_MIN_GAP) / 
+                       (SHIELD_PLATFORM_MAX_GAP - SHIELD_PLATFORM_MIN_GAP);
+        if (Math.random() < Math.min(1, chance * 0.3)) {
+          this.platformsSinceLastShieldPlatform = 0;
+          return true;
+        }
+      }
+    } else {
+      // Level mode: roughly once every 8-12 levels worth of platforms
+      // Each level has ~30-60 platforms, so every 300-600 platforms
+      if (this.platformsSinceLastShieldPlatform >= 250 && Math.random() < 0.01) {
+        this.platformsSinceLastShieldPlatform = 0;
+        return true;
+      }
+    }
+    return false;
   }
 
   init() {
@@ -316,7 +337,10 @@ export class GameEngine {
     this.lavaSlowStacks = 0;
     this.hasCoinMagnet = false;
     this.hasShield = this.startWithShield;
+    this.hasPermanentShield = false;
     this.platformStabilizerStacks = 0;
+    this.platformsSinceLastShieldPlatform = 0;
+    this.totalPlatformsGenerated = 0;
     this.inputDir = 0;
     this.coyoteTimer = 0;
     this.jumpBufferTimer = 0;
@@ -332,8 +356,6 @@ export class GameEngine {
     this.lavaSurgeDuration = 0;
     this.screenShake = 0;
     this.doubleJumpFlashTimer = 0;
-    this.invincibleTimer = 0;
-    this.isInvincible = false;
     this.lastPlatformType = 'normal';
     this.levelComplete = false;
     this.levelCompleteTimer = 0;
@@ -387,7 +409,6 @@ export class GameEngine {
   revive() {
     const p = this.player;
 
-    // 1. Respawn on last safe platform (validate it still exists in active platforms)
     let spawnPlat: Platform | null = null;
 
     if (this.lastLandedPlatformRef && this.platforms.includes(this.lastLandedPlatformRef) && !this.lastLandedPlatformRef.broken) {
@@ -395,17 +416,14 @@ export class GameEngine {
     }
 
     if (!spawnPlat) {
-      // Fallback: find the highest non-broken normal platform near the player
       const candidates = this.platforms
-        .filter(pl => !pl.broken && pl.visible !== false && pl.type !== 'danger' && pl.type !== 'vanishing')
-        .sort((a, b) => a.y - b.y); // lowest y = highest on screen
+        .filter(pl => !pl.broken && pl.type !== 'danger')
+        .sort((a, b) => a.y - b.y);
       
-      // Pick a platform near the player's last position
       spawnPlat = candidates.find(pl => pl.y < p.y + 100 && pl.y > this.cameraY - 50) || null;
     }
 
     if (!spawnPlat) {
-      // Ultimate fallback: create a platform
       const safeW = 110;
       const safeY = p.y + 20;
       const safeX = Math.max(0, Math.min(this.width - safeW, p.x));
@@ -416,7 +434,6 @@ export class GameEngine {
       this.platforms.push(spawnPlat);
     }
 
-    // Use current platform position (handles moving platforms)
     const spawnPlatX = spawnPlat.x;
     const spawnPlatY = spawnPlat.y;
     const spawnPlatW = spawnPlat.width;
@@ -424,7 +441,6 @@ export class GameEngine {
     p.x = spawnPlatX + spawnPlatW / 2 - p.width / 2;
     p.y = spawnPlatY - p.height;
 
-    // 2. Reset physics
     p.vx = 0;
     p.vy = 0;
     p.doubleJumpUsed = false;
@@ -434,16 +450,14 @@ export class GameEngine {
     this.jumpRequested = false;
     this.jumpBufferTimer = 0;
 
-    // 3. Push lava down for recovery room (60% of screen below player)
     this.lavaY = Math.max(this.lavaY, p.y + this.height * 0.6);
 
-    // 4. Reachability check — validate the immediate next platform above
     const limits = computeReachability(0);
     const nextPlatformAbove = this.platforms
-      .filter((plat) => !plat.broken && !(plat.type === 'vanishing' && plat.visible === false) && plat.y < spawnPlatY)
+      .filter((plat) => !plat.broken && plat.y < spawnPlatY)
       .reduce<Platform | null>((closest, plat) => {
         if (!closest) return plat;
-        return plat.y > closest.y ? plat : closest; // larger y while still above = nearest above
+        return plat.y > closest.y ? plat : closest;
       }, null);
 
     const isNextReachable = !!nextPlatformAbove && isPlatformReachable(
@@ -457,7 +471,6 @@ export class GameEngine {
     );
 
     if (!isNextReachable) {
-      // Spawn temporary rescue platform in guaranteed reachable jump arc
       const safetyW = 110;
       const safetyY = spawnPlatY - Math.max(70, limits.safeVerticalDist * 0.55);
       const safetyX = Math.max(
@@ -474,10 +487,9 @@ export class GameEngine {
       });
     }
 
-    // 5. Grace timers
-    this.reviveGraceTimer = 1.5;  // 1.5 second invulnerability
+    this.reviveGraceTimer = 1.5;
     this.reviveInputLockTimer = 0.3;
-    this.reviveLavaPauseTimer = 1.0;  // lava pause for recovery
+    this.reviveLavaPauseTimer = 1.0;
     this.cameraY = p.y - this.height * 0.35;
     this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00ff88', 15);
 
@@ -492,7 +504,7 @@ export class GameEngine {
   /** Apply item pickup effect */
   applyItemEffect(type: ItemType) {
     playPowerUp();
-    const ITEM_DURATION = 6; // unified duration for all items
+    const ITEM_DURATION = 6;
     switch (type) {
       case 'coinMagnet':
         this.hasCoinMagnet = true;
@@ -515,7 +527,6 @@ export class GameEngine {
   }
 
   addActiveEffect(type: ItemType, duration: number) {
-    // Remove existing same-type effect and replace
     this.activeEffects = this.activeEffects.filter(e => e.type !== type);
     this.activeEffects.push({ type, remaining: duration, duration });
     this.onActiveEffectsUpdate(this.activeEffects);
@@ -546,9 +557,17 @@ export class GameEngine {
       const newY = this.highestPlatformY - gap;
       let newX = Math.random() * (this.width - PLATFORM_WIDTH);
 
-      let type = this.pickPlatformType();
-      if (type === 'danger' && newY > this.lavaY - 200) {
-        type = 'normal';
+      this.totalPlatformsGenerated++;
+
+      // Check if this should be a rare golden shield platform
+      let type: Platform['type'];
+      if (this.shouldSpawnShieldPlatform() && !this.hasPermanentShield) {
+        type = 'invincible'; // invincible type = golden shield platform
+      } else {
+        type = this.pickPlatformType();
+        if (type === 'danger' && newY > this.lavaY - 200) {
+          type = 'normal';
+        }
       }
       this.lastPlatformType = type;
 
@@ -590,19 +609,9 @@ export class GameEngine {
         platform.originX = newX;
       }
 
-      if (type === 'vanishing') {
-        platform.vanishTimer = 0;
-        // Shorter vanish windows in late game
-        const vanishBase = levelId >= 35 ? 1.5 : 2.0;
-        const vanishRange = levelId >= 35 ? 1.0 : 1.5;
-        platform.vanishDuration = vanishBase + Math.random() * vanishRange;
-        platform.visible = true;
-      }
-
-      // Reward platforms: narrower, mostly static for clarity
+      // Reward/coin platforms: narrower, mostly static for clarity
       if (type === 'reward') {
         platform.width = Math.max(30, platWidth * 0.55);
-        // Only 15% of reward platforms move (rare challenge)
         if (Math.random() < 0.15) {
           platform.moveSpeed = 40 + Math.random() * 50;
           platform.moveRange = 40 + Math.random() * 50;
@@ -636,6 +645,11 @@ export class GameEngine {
         }
       }
 
+      // Golden shield platform visual width boost
+      if (type === 'invincible') {
+        platform.width = Math.max(platWidth, PLATFORM_WIDTH * 1.2);
+      }
+
       this.platforms.push(platform);
 
       // Coin spawning
@@ -666,7 +680,6 @@ export class GameEngine {
           const pattern = Math.random();
 
           if (pattern < 0.45) {
-            // Arc pattern — centered on platform
             const halfCount = (coinCount - 1) / 2;
             for (let c = 0; c < coinCount; c++) {
               const t = (c - halfCount) / Math.max(halfCount, 1);
@@ -683,7 +696,6 @@ export class GameEngine {
               });
             }
           } else {
-            // Vertical column — centered on platform
             for (let c = 0; c < coinCount; c++) {
               const coinY = platform.y - 22 - c * 13;
               this.coins.push({
@@ -701,7 +713,6 @@ export class GameEngine {
 
       // Item pickup spawning (rare, distance-gated, never on breakable)
       this.platformsSinceLastItem++;
-      const platIndex = this.platforms.length - 1;
       const spawnChance = getItemSpawnChance(levelId, this.isEndless);
       if (['normal', 'moving'].includes(type) && newY < this.lavaY - 300 && this.platformsSinceLastItem >= ITEM_MIN_PLATFORM_GAP) {
         if (Math.random() < spawnChance) {
@@ -755,7 +766,6 @@ export class GameEngine {
     const beforeLen = this.activeEffects.length;
     this.activeEffects = this.activeEffects.filter(e => {
       if (e.remaining <= 0) {
-        // Effect expired — clean up
         if (e.type === 'coinMagnet') this.hasCoinMagnet = false;
         if (e.type === 'shield') this.hasShield = false;
         if (e.type === 'doubleJump') { this.hasDoubleJump = false; this.player.doubleJumpUsed = true; }
@@ -824,7 +834,6 @@ export class GameEngine {
     if (p.vy > 0) {
       for (const plat of this.platforms) {
         if (plat.broken) continue;
-        if (plat.type === 'vanishing' && plat.visible === false) continue;
 
         const platLeft = plat.x - PLATFORM_HITBOX_PADDING;
         const platRight = plat.x + plat.width + PLATFORM_HITBOX_PADDING;
@@ -835,54 +844,56 @@ export class GameEngine {
           p.y + p.height >= plat.y &&
           p.y + p.height <= plat.y + plat.height + p.vy * dt + 5
         ) {
-          if (plat.type === 'boost') {
-            this.performJump('boost', BOOST_FORCE / JUMP_FORCE);
-            this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ff6600', 8);
-            playJump(1.0);
-          } else if (plat.type === 'breakable' || plat.type === 'reward') {
+          if (plat.type === 'breakable') {
+            // Crack platform — breaks on landing
             this.performJump('normal', 1.0);
             plat.broken = true;
-            this.spawnParticles(plat.x + plat.width / 2, plat.y, plat.type === 'reward' ? '#ffd700' : '#888888', 8);
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#888888', 8);
+            playJump(0.5);
+          } else if (plat.type === 'reward') {
+            // Coin platform — breaks on landing
+            this.performJump('normal', 1.0);
+            plat.broken = true;
+            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ffd700', 8);
             playJump(0.5);
           } else if (plat.type === 'lavaControl') {
-            // Blue ice platform — slow lava by 40% for 4 seconds
+            // Ice platform — instant lava decrease, platform stays
             this.performJump('normal', 1.0);
-            this.lavaSpeedMults.push({ mult: 0.6, remaining: 4, duration: 4 });
+            this.lavaY += LAVA_ICE_SHIFT; // push lava down
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#00ccff', 10);
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#88ddff', 6);
             this.screenShake = 0.15;
-            plat.broken = true;
             playJump(0.7);
           } else if (plat.type === 'danger') {
-            // Red danger platform — speed up lava by 40% for 4 seconds
+            // Lava platform — instant lava increase, platform stays
             this.performJump('normal', 1.0);
-            this.lavaSpeedMults.push({ mult: 1.4, remaining: 4, duration: 4 });
+            this.lavaY += LAVA_DANGER_SHIFT; // push lava up (negative = up)
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ff3333', 10);
             this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ff6600', 6);
             this.screenShake = 0.3;
-            plat.broken = true;
             playJump(0.6);
           } else if (plat.type === 'invincible') {
+            // Golden Shield platform — grants permanent shield, breaks after
             this.performJump('normal', 1.0);
-            this.isInvincible = true;
-            this.invincibleTimer = 3.0;
-            this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ffdd00', 12);
+            if (!this.hasPermanentShield) {
+              this.hasPermanentShield = true;
+              this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ffd700', 15);
+              this.spawnParticles(plat.x + plat.width / 2, plat.y, '#ffee88', 10);
+              this.screenShake = 0.2;
+              playPowerUp();
+            }
             plat.broken = true;
-            playPowerUp();
-          } else if (plat.type === 'vanishing') {
-            this.performJump('normal', 1.0);
-            plat.vanishTimer = plat.vanishDuration || 2.5;
-            playJump(0.3);
           } else {
+            // Normal and moving platforms
             this.performJump('normal', 1.0);
-            this.screenShake = 0.08; // subtle landing feedback
+            this.screenShake = 0.08;
             playJump(0.4);
           }
 
           p.y = plat.y - p.height;
 
           // Track last landed platform for revive (only stable types)
-          if (!plat.broken && plat.type !== 'breakable' && plat.type !== 'vanishing' && plat.type !== 'reward') {
+          if (!plat.broken && plat.type !== 'breakable') {
             this.lastLandedPlatformRef = plat;
           }
 
@@ -923,24 +934,9 @@ export class GameEngine {
           }
         }
       }
-
-      if (plat.type === 'vanishing' && !plat.broken && plat.vanishTimer !== undefined && plat.vanishTimer > 0) {
-        plat.vanishTimer -= dt;
-        if (plat.vanishTimer <= 0) {
-          plat.visible = false;
-          plat.broken = true;
-          this.spawnParticles(plat.x + plat.width / 2, plat.y, 'rgba(200,200,255,0.8)', 6);
-        }
-      }
     }
 
     this.ensureReachablePlatform();
-
-    // Invincibility timer
-    if (this.isInvincible) {
-      this.invincibleTimer -= dt;
-      if (this.invincibleTimer <= 0) this.isInvincible = false;
-    }
 
     // Item pickup collision
     for (const item of this.items) {
@@ -1006,7 +1002,6 @@ export class GameEngine {
     // Apply platform-based and item-based speed multipliers (smooth blend)
     let platformSpeedMult = 1;
     for (const m of this.lavaSpeedMults) {
-      // Smooth transition: fade in/out over 0.5s
       const fadeIn = Math.min(1, (m.duration - m.remaining) / 0.5);
       const fadeOut = Math.min(1, m.remaining / 0.5);
       const blend = Math.min(fadeIn, fadeOut);
@@ -1070,7 +1065,6 @@ export class GameEngine {
       const dist = Math.sqrt(dx * dx + dy * dy);
 
       if (this.hasCoinMagnet && dist < COIN_MAGNET_RANGE) {
-        // Detach from platform so magnet pull works freely
         coin.linkedPlatform = undefined;
         const t = 1 - (dist / COIN_MAGNET_RANGE);
         const pullStrength = 200 + 600 * t * t;
@@ -1109,19 +1103,18 @@ export class GameEngine {
     this.coins = this.coins.filter((c) => !c.collected && c.y < this.lavaY + 100);
     this.items = this.items.filter((i) => !i.collected && i.y < this.lavaY + 100);
 
+    // Check if any shield is active
+    const hasAnyShield = this.hasShield || this.hasPermanentShield;
+
     // Game over checks
     if (p.y + p.height > this.lavaY) {
       if (this.reviveGraceTimer > 0) {
         p.vy = -JUMP_FORCE * 0.5;
         p.y = this.lavaY - p.height - 5;
-      } else if (this.isInvincible) {
-        p.vy = -JUMP_FORCE;
-        p.y = this.lavaY - p.height - 5;
-        this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#ffdd00', 10);
       } else if (this.shieldGraceTimer > 0) {
         p.vy = -JUMP_FORCE * 0.5;
         p.y = this.lavaY - p.height - 5;
-      } else if (this.hasShield || this.isInvincible) {
+      } else if (hasAnyShield) {
         this.activateShieldRebound();
       } else {
         this.running = false;
@@ -1138,7 +1131,7 @@ export class GameEngine {
       if (this.shieldGraceTimer > 0) {
         p.vy = -JUMP_FORCE * 0.5;
         p.y = this.cameraY + this.height;
-      } else if (this.hasShield || this.isInvincible) {
+      } else if (hasAnyShield) {
         this.activateShieldRebound();
       } else {
         this.running = false;
@@ -1155,11 +1148,14 @@ export class GameEngine {
 
   activateShieldRebound() {
     const p = this.player;
+    // Consume temporary shield first, then permanent
     if (this.hasShield) {
       this.hasShield = false;
-    } else if (this.isInvincible) {
-      this.isInvincible = false;
-      this.invincibleTimer = 0;
+      // Remove the active effect
+      this.activeEffects = this.activeEffects.filter(e => e.type !== 'shield');
+      this.onActiveEffectsUpdate(this.activeEffects);
+    } else if (this.hasPermanentShield) {
+      this.hasPermanentShield = false;
     }
 
     p.vx = 0;
@@ -1181,7 +1177,7 @@ export class GameEngine {
     const visibleBottom = this.cameraY + this.height + 50;
 
     const activePlatforms = this.platforms.filter(
-      pl => !pl.broken && (pl.visible !== false) &&
+      pl => !pl.broken &&
         pl.y >= visibleTop && pl.y <= visibleBottom
     );
 
@@ -1204,7 +1200,6 @@ export class GameEngine {
   }
 
   spawnParticles(x: number, y: number, color: string, count: number) {
-    // Cap total particles for performance
     const MAX_PARTICLES = 150;
     const spawnCount = Math.min(count, MAX_PARTICLES - this.particles.length);
     for (let i = 0; i < spawnCount; i++) {
@@ -1253,7 +1248,6 @@ export class GameEngine {
       this.renderCoin(ctx, coin);
     }
 
-    // Render item pickups
     for (const item of this.items) {
       if (item.collected) continue;
       if (item.y < this.cameraY - 50 || item.y > this.cameraY + h + 50) continue;
@@ -1275,7 +1269,22 @@ export class GameEngine {
     this.renderLava(ctx);
     ctx.restore();
 
-    // Shield indicator
+    // Permanent shield indicator (golden)
+    if (this.hasPermanentShield) {
+      const pulse = Math.sin(performance.now() / 200) * 0.2 + 0.8;
+      ctx.strokeStyle = `rgba(255, 215, 0, ${pulse * 0.7})`;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#ffd700';
+      ctx.shadowBlur = 12;
+      const px = this.player.x + this.player.width / 2;
+      const py = this.player.y + this.player.height / 2 - this.cameraY;
+      ctx.beginPath();
+      ctx.arc(px, py, 30, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    // Temporary shield indicator (blue)
     if (this.hasShield) {
       ctx.strokeStyle = 'rgba(0, 170, 255, 0.5)';
       ctx.lineWidth = 3;
@@ -1286,29 +1295,13 @@ export class GameEngine {
       ctx.stroke();
     }
 
-    // Invincibility aura
-    if (this.isInvincible) {
-      const pulse = Math.sin(performance.now() / 100) * 0.3 + 0.7;
-      ctx.strokeStyle = `rgba(255, 220, 0, ${pulse * 0.7})`;
-      ctx.lineWidth = 3;
-      ctx.shadowColor = '#ffdd00';
-      ctx.shadowBlur = 15;
-      const px = this.player.x + this.player.width / 2;
-      const py = this.player.y + this.player.height / 2 - this.cameraY;
-      ctx.beginPath();
-      ctx.arc(px, py, 30, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-
-    // Lava edge glow overlay — intensity based on lava speed
+    // Lava edge glow overlay
     const distToLava = this.lavaY - (this.player.y + this.player.height);
     const prox = 1 - Math.min(1, Math.max(0, distToLava / 400));
     
-    // Lava speed glow modifier: faster = brighter, slower = darker
     const baseSpeedRef = LAVA_INITIAL_SPEED * (this.currentLevelDef?.lavaSpeedMod ?? 1);
     const speedRatio = Math.min(2, this.lavaSpeed / Math.max(1, baseSpeedRef));
-    const glowIntensity = 0.5 + speedRatio * 0.5; // 0.5-1.5 range
+    const glowIntensity = 0.5 + speedRatio * 0.5;
 
     if (prox > 0.2) {
       const intensity = (prox - 0.2) * 1.25 * glowIntensity;
@@ -1402,34 +1395,65 @@ export class GameEngine {
   }
 
   renderPlatform(ctx: CanvasRenderingContext2D, plat: Platform) {
-    if (plat.type === 'vanishing' && plat.visible === false) return;
-
     const colors: Record<string, string> = {
       normal: '#4a5568',
       breakable: '#a0522d',
       moving: '#4682b4',
-      boost: '#ff6600',
       reward: '#9b59b6',
       lavaControl: '#3498db',
       danger: '#cc2200',
-      invincible: '#ffcc00',
-      vanishing: '#8899aa',
+      invincible: '#daa520',
     };
 
     const glowColors: Record<string, string> = {
       normal: 'rgba(74, 85, 104, 0.3)',
       breakable: 'rgba(160, 82, 45, 0.3)',
       moving: 'rgba(70, 130, 180, 0.4)',
-      boost: 'rgba(255, 102, 0, 0.5)',
       reward: 'rgba(155, 89, 182, 0.6)',
       lavaControl: 'rgba(52, 152, 219, 0.5)',
       danger: 'rgba(204, 34, 0, 0.6)',
-      invincible: 'rgba(255, 204, 0, 0.6)',
-      vanishing: 'rgba(136, 153, 170, 0.4)',
+      invincible: 'rgba(255, 215, 0, 0.8)',
     };
 
+    // Special golden glow for shield platform
+    if (plat.type === 'invincible') {
+      const pulse = Math.sin(performance.now() / 300) * 0.3 + 0.7;
+      ctx.shadowColor = `rgba(255, 215, 0, ${pulse})`;
+      ctx.shadowBlur = 20;
+      
+      // Golden gradient
+      const grad = ctx.createLinearGradient(plat.x, plat.y, plat.x, plat.y + plat.height);
+      grad.addColorStop(0, '#ffd700');
+      grad.addColorStop(0.5, '#daa520');
+      grad.addColorStop(1, '#b8860b');
+      ctx.fillStyle = grad;
+      
+      ctx.beginPath();
+      ctx.roundRect(plat.x, plat.y, plat.width, plat.height, 4);
+      ctx.fill();
+      
+      // Golden particle aura
+      const time = performance.now() / 1000;
+      for (let i = 0; i < 3; i++) {
+        const sparkX = plat.x + (plat.width * (0.2 + i * 0.3)) + Math.sin(time * 2 + i * 2) * 5;
+        const sparkY = plat.y - 4 - Math.abs(Math.sin(time * 3 + i)) * 8;
+        ctx.fillStyle = `rgba(255, 215, 0, ${0.4 + Math.sin(time * 4 + i) * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(sparkX, sparkY, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // Shield icon
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#fff';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🛡️', plat.x + plat.width / 2, plat.y + 11);
+      return;
+    }
+
     ctx.shadowColor = glowColors[plat.type] || glowColors.normal;
-    ctx.shadowBlur = plat.type === 'boost' || plat.type === 'reward' ? 15 : 8;
+    ctx.shadowBlur = plat.type === 'reward' ? 15 : 8;
 
     const grad = ctx.createLinearGradient(plat.x, plat.y, plat.x, plat.y + plat.height);
     grad.addColorStop(0, colors[plat.type] || colors.normal);
@@ -1450,13 +1474,6 @@ export class GameEngine {
       ctx.moveTo(plat.x + plat.width * 0.7, plat.y);
       ctx.lineTo(plat.x + plat.width * 0.6, plat.y + plat.height);
       ctx.stroke();
-    }
-
-    if (plat.type === 'boost') {
-      ctx.fillStyle = '#fff';
-      ctx.font = '10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('▲', plat.x + plat.width / 2, plat.y + 11);
     }
 
     if (plat.type === 'reward') {
@@ -1481,27 +1498,6 @@ export class GameEngine {
       ctx.textAlign = 'center';
       ctx.fillText('🔥', plat.x + plat.width / 2, plat.y + 11);
     }
-
-    if (plat.type === 'invincible') {
-      const pulse = Math.sin(performance.now() / 180) * 0.3 + 0.7;
-      ctx.fillStyle = `rgba(255, 220, 0, ${pulse})`;
-      ctx.font = '10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('⭐', plat.x + plat.width / 2, plat.y + 11);
-    }
-
-    if (plat.type === 'vanishing') {
-      const timer = plat.vanishTimer ?? 0;
-      if (timer > 0 && timer < 1.0) {
-        const flicker = Math.sin(performance.now() / 80) * 0.5 + 0.5;
-        ctx.globalAlpha = 0.3 + flicker * 0.7;
-      }
-      ctx.fillStyle = 'rgba(200,200,255,0.6)';
-      ctx.font = '10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('◌', plat.x + plat.width / 2, plat.y + 11);
-      ctx.globalAlpha = 1;
-    }
   }
 
   renderItem(ctx: CanvasRenderingContext2D, item: ItemPickup) {
@@ -1512,11 +1508,9 @@ export class GameEngine {
     const bobY = Math.sin(time * 3 + item.phaseOffset) * 4;
     const pulse = Math.sin(time * 4) * 0.2 + 0.8;
 
-    // Glow
     ctx.shadowColor = def.color;
     ctx.shadowBlur = 12 * pulse;
 
-    // Background circle
     ctx.fillStyle = def.color + '40';
     ctx.beginPath();
     ctx.arc(item.x, item.y + bobY, 14, 0, Math.PI * 2);
@@ -1526,7 +1520,6 @@ export class GameEngine {
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Icon
     ctx.shadowBlur = 0;
     ctx.font = '14px sans-serif';
     ctx.textAlign = 'center';
@@ -1610,10 +1603,9 @@ export class GameEngine {
 
     if (lavaTop > this.cameraY + this.height + 50) return;
 
-    // Glow intensity based on lava speed
     const baseSpeedRef = LAVA_INITIAL_SPEED * (this.currentLevelDef?.lavaSpeedMod ?? 1);
     const speedRatio = Math.min(2, this.lavaSpeed / Math.max(1, baseSpeedRef));
-    const glowAlpha = 0.15 + speedRatio * 0.2; // 0.15 - 0.55
+    const glowAlpha = 0.15 + speedRatio * 0.2;
 
     const glowGrad = ctx.createLinearGradient(0, lavaTop - 80, 0, lavaTop);
     glowGrad.addColorStop(0, 'rgba(255, 60, 0, 0)');
@@ -1621,7 +1613,6 @@ export class GameEngine {
     ctx.fillStyle = glowGrad;
     ctx.fillRect(0, lavaTop - 80, this.width, 80);
 
-    // Lava body color shifts with speed
     const r1 = Math.min(255, Math.round(255 * (0.8 + speedRatio * 0.2)));
     const g1 = Math.max(0, Math.round(69 - speedRatio * 20));
 
@@ -1634,7 +1625,7 @@ export class GameEngine {
     ctx.beginPath();
     ctx.moveTo(0, lavaBottom);
     const time = performance.now() / 1000;
-    const waveAmp = 4 + speedRatio * 4; // faster = bigger waves
+    const waveAmp = 4 + speedRatio * 4;
     for (let x = 0; x <= this.width; x += 5) {
       const wave = Math.sin(x * 0.02 + time * 3) * waveAmp + Math.sin(x * 0.05 + time * 2) * (waveAmp * 0.5);
       ctx.lineTo(x, lavaTop + wave);
@@ -1657,7 +1648,7 @@ export class GameEngine {
     ctx.shadowBlur = 0;
   }
 
-  performJump(type: 'normal' | 'double' | 'boost' | 'shieldRebound', forceMult = 1.0) {
+  performJump(type: 'normal' | 'double' | 'shieldRebound', forceMult = 1.0) {
     const p = this.player;
     const baseForce = JUMP_FORCE * (1 + this.jumpBonus);
 
@@ -1665,7 +1656,6 @@ export class GameEngine {
     p.vy = -baseForce * forceMult;
 
     if (type !== 'double') {
-      // Landing resets double jump usage for next air phase
       p.doubleJumpUsed = false;
       this.wasOnGround = true;
       this.coyoteTimer = 0;

@@ -11,7 +11,7 @@ export interface Player {
   jumpsRemaining: number;
 }
 
-export type PlatformType = 'normal' | 'breakable' | 'moving' | 'boost' | 'reward' | 'lavaControl' | 'danger' | 'invincible' | 'vanishing';
+export type PlatformType = 'normal' | 'breakable' | 'moving' | 'reward' | 'lavaControl' | 'danger' | 'invincible';
 
 export interface Platform {
   x: number;
@@ -99,19 +99,16 @@ export type GameScreen = 'menu' | 'playing' | 'paused' | 'gameOver' | 'shop' | '
 export interface LevelDefinition {
   id: number;
   name: string;
-  targetHeight: number; // score to reach
+  targetHeight: number;
   normalChance: number;
   breakableChance: number;
   movingChance: number;
-  boostChance: number;
   rewardChance: number;
   platformWidthMod: number;
   lavaSpeedMod: number;
-  lavaEndAccel: number; // lava acceleration multiplier in last 20% of level
+  lavaEndAccel: number;
   lavaControlChance: number;
   dangerChance: number;
-  invincibleChance: number;
-  vanishingChance: number;
 }
 
 export interface GameState {
@@ -133,9 +130,8 @@ export interface DifficultyPhase {
   normalChance: number;
   breakableChance: number;
   movingChance: number;
-  boostChance: number;
   rewardChance: number;
-  platformWidthMod: number; // multiplier for platform width
-  lavaSpeedMod: number; // multiplier for lava speed
-  minTime: number; // seconds to enter this phase
+  platformWidthMod: number;
+  lavaSpeedMod: number;
+  minTime: number;
 }
