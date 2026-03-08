@@ -350,24 +350,31 @@ export class GameEngine {
   revive() {
     const p = this.player;
 
-    // Use the last platform the player actually landed on
+    // 1. Respawn on last safe platform
+    let spawnPlatX: number;
+    let spawnPlatY: number;
+    let spawnPlatW: number;
+
     if (this.lastLandedPlatform) {
       const lp = this.lastLandedPlatform;
-      p.x = lp.x + lp.width / 2 - p.width / 2;
-      p.y = lp.y - p.height;
+      spawnPlatX = lp.x;
+      spawnPlatY = lp.y;
+      spawnPlatW = lp.width;
     } else {
-      // Fallback: spawn a platform at current position
-      const platW = 100;
-      const spawnY = p.y + 20;
-      const spawnX = Math.max(0, Math.min(this.width - platW, p.x));
+      // Fallback: create a platform at current height
+      spawnPlatW = 100;
+      spawnPlatY = p.y + 20;
+      spawnPlatX = Math.max(0, Math.min(this.width - spawnPlatW, p.x));
       this.platforms.push({
-        x: spawnX, y: spawnY, width: platW, height: PLATFORM_HEIGHT,
+        x: spawnPlatX, y: spawnPlatY, width: spawnPlatW, height: PLATFORM_HEIGHT,
         type: 'normal', broken: false,
       });
-      p.x = spawnX + platW / 2 - p.width / 2;
-      p.y = spawnY - p.height;
     }
 
+    p.x = spawnPlatX + spawnPlatW / 2 - p.width / 2;
+    p.y = spawnPlatY - p.height;
+
+    // 2. Reset physics
     p.vx = 0;
     p.vy = 0;
     p.doubleJumpUsed = false;
@@ -377,11 +384,37 @@ export class GameEngine {
     this.jumpRequested = false;
     this.jumpBufferTimer = 0;
 
-    // Push lava down to give recovery room (60% of screen below player)
+    // 3. Push lava down for recovery room (60% of screen below player)
     this.lavaY = Math.max(this.lavaY, p.y + this.height * 0.6);
-    this.reviveGraceTimer = 1.0;  // 1 second invulnerability
+
+    // 4. Reachability check — ensure at least one platform above is reachable
+    const limits = computeReachability(this.jumpBonus);
+    const hasReachableAbove = this.platforms.some(plat => {
+      if (plat.broken) return false;
+      if (plat.y >= spawnPlatY) return false; // only check platforms above
+      return isPlatformReachable(
+        spawnPlatX, spawnPlatW, spawnPlatY,
+        plat.x, plat.width, plat.y,
+        limits,
+      );
+    });
+
+    if (!hasReachableAbove) {
+      // Spawn a safety platform above at 60% of safe jump height
+      const safetyY = spawnPlatY - limits.safeVerticalDist * 0.6;
+      const safetyW = 100;
+      const safetyX = Math.max(0, Math.min(this.width - safetyW,
+        spawnPlatX + spawnPlatW / 2 - safetyW / 2));
+      this.platforms.push({
+        x: safetyX, y: safetyY, width: safetyW, height: PLATFORM_HEIGHT,
+        type: 'normal', broken: false,
+      });
+    }
+
+    // 5. Grace timers
+    this.reviveGraceTimer = 1.5;  // 1.5 second invulnerability
     this.reviveInputLockTimer = 0.3;
-    this.reviveLavaPauseTimer = 0.8;  // longer lava pause for recovery
+    this.reviveLavaPauseTimer = 1.0;  // lava pause for recovery
     this.cameraY = p.y - this.height * 0.35;
     this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00ff88', 15);
 
