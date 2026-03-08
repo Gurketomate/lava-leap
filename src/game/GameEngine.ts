@@ -116,7 +116,7 @@ export class GameEngine {
   wasOnGround = false;
   jumpRequested = false;
 
-  // Reachability
+  // Reachability — always computed with base jump (no upgrades) to guarantee levels are beatable without upgrades
   reachability: ReachabilityLimits = computeReachability(0);
 
   // Analytics
