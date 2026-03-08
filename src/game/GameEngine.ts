@@ -1452,8 +1452,10 @@ export class GameEngine {
       return;
     }
 
-    ctx.shadowColor = glowColors[plat.type] || glowColors.normal;
-    ctx.shadowBlur = plat.type === 'reward' ? 15 : 8;
+    // Outer glow aura
+    const glowColor = glowColors[plat.type] || glowColors.normal;
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = plat.type === 'reward' ? 18 : plat.type === 'danger' ? 14 : 10;
 
     const grad = ctx.createLinearGradient(plat.x, plat.y, plat.x, plat.y + plat.height);
     grad.addColorStop(0, colors[plat.type] || colors.normal);
@@ -1463,6 +1465,11 @@ export class GameEngine {
     ctx.beginPath();
     ctx.roundRect(plat.x, plat.y, plat.width, plat.height, 4);
     ctx.fill();
+
+    // Subtle edge highlight
+    ctx.strokeStyle = glowColor;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
     ctx.shadowBlur = 0;
 
     if (plat.type === 'breakable') {
@@ -1554,6 +1561,23 @@ export class GameEngine {
     ctx.save();
     ctx.translate(p.x + p.width / 2, p.y + p.height / 2);
 
+    // Squash/stretch based on vertical velocity
+    const maxStretch = 0.25;
+    let scaleX = 1;
+    let scaleY = 1;
+    if (p.vy < -50) {
+      // Going up: stretch vertically, squash horizontally
+      const t = Math.min(1, Math.abs(p.vy) / 500);
+      scaleY = 1 + t * maxStretch;
+      scaleX = 1 - t * maxStretch * 0.5;
+    } else if (p.vy > 50) {
+      // Falling: squash vertically, stretch horizontally
+      const t = Math.min(1, p.vy / 400);
+      scaleY = 1 - t * maxStretch * 0.6;
+      scaleX = 1 + t * maxStretch * 0.3;
+    }
+    ctx.scale(scaleX, scaleY);
+
     if (this.doubleJumpFlashTimer > 0) {
       const flashIntensity = this.doubleJumpFlashTimer / 0.3;
       const r = Math.round(231 + (0 - 231) * flashIntensity);
@@ -1564,32 +1588,56 @@ export class GameEngine {
       ctx.fillStyle = '#e74c3c';
     }
 
+    // Body
     ctx.beginPath();
     ctx.roundRect(-p.width / 2, -p.height / 2, p.width, p.height, 6);
     ctx.fill();
 
+    // Visor
     ctx.fillStyle = '#3498db';
     ctx.beginPath();
-    ctx.roundRect(-10, -p.height / 2 + 4, 20, 12, 4);
+    ctx.roundRect(-11, -p.height / 2 + 3, 22, 14, 4);
     ctx.fill();
 
+    // Eyes (larger)
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.arc(-4, -p.height / 2 + 10, 3, 0, Math.PI * 2);
-    ctx.arc(4, -p.height / 2 + 10, 3, 0, Math.PI * 2);
+    ctx.arc(-5, -p.height / 2 + 10, 4, 0, Math.PI * 2);
+    ctx.arc(5, -p.height / 2 + 10, 4, 0, Math.PI * 2);
     ctx.fill();
 
-    if (p.vy < -100) {
-      const flameH = Math.min(20, Math.abs(p.vy) / 40);
+    // Pupils
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(-4.5, -p.height / 2 + 10.5, 1.8, 0, Math.PI * 2);
+    ctx.arc(5.5, -p.height / 2 + 10.5, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Jump flame effect under character
+    if (p.vy < -50) {
+      const flameH = Math.min(24, Math.abs(p.vy) / 30);
+      const flameW = 8 + Math.min(6, Math.abs(p.vy) / 80);
+      const time = performance.now() / 100;
+      const flicker = Math.sin(time * 3) * 2;
+
+      // Outer glow
+      const glowGrad = ctx.createRadialGradient(0, p.height / 2 + 4, 0, 0, p.height / 2 + 4, flameH);
+      glowGrad.addColorStop(0, 'rgba(255, 100, 0, 0.4)');
+      glowGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
+      ctx.fillStyle = glowGrad;
+      ctx.fillRect(-flameH, p.height / 2, flameH * 2, flameH);
+
+      // Main flame
       const grad = ctx.createLinearGradient(0, p.height / 2, 0, p.height / 2 + flameH);
-      grad.addColorStop(0, '#ff6600');
-      grad.addColorStop(0.5, '#ff3300');
+      grad.addColorStop(0, '#ffcc00');
+      grad.addColorStop(0.3, '#ff6600');
+      grad.addColorStop(0.7, '#ff3300');
       grad.addColorStop(1, 'rgba(255, 0, 0, 0)');
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.moveTo(-6, p.height / 2);
-      ctx.lineTo(6, p.height / 2);
-      ctx.lineTo(0, p.height / 2 + flameH);
+      ctx.moveTo(-flameW, p.height / 2);
+      ctx.quadraticCurveTo(-flameW * 0.5, p.height / 2 + flameH * 0.6 + flicker, 0, p.height / 2 + flameH);
+      ctx.quadraticCurveTo(flameW * 0.5, p.height / 2 + flameH * 0.6 - flicker, flameW, p.height / 2);
       ctx.closePath();
       ctx.fill();
     }
