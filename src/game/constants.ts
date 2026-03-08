@@ -128,11 +128,11 @@ export const LEVELS: LevelDefinition[] = (() => {
       const lt = (id - 1) / 4;
       name = ['First Steps', 'Getting Started', 'The Ascent', 'Light Breeze', 'Summit View'][id - 1];
       targetHeight = Math.floor(lerp(300, 450, lt));
-      normalChance = lerp(0.88, 0.72, lt);
+      normalChance = lerp(0.89, 0.74, lt);
       breakableChance = lerp(0.01, 0.05, lt);
       movingChance = lerp(0.02, 0.10, lt);
-      boostChance = lerp(0.09, 0.08, lt);
-      rewardChance = lerp(0.00, 0.02, lt);
+      boostChance = lerp(0.08, 0.08, lt);
+      rewardChance = lerp(0.00, 0.01, lt);
       platformWidthMod = lerp(1.25, 1.10, lt);
       lavaSpeedMod = lerp(0.70, 0.85, lt);
       lavaEndAccel = lerp(1.1, 1.2, lt);
