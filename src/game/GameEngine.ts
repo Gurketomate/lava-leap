@@ -780,6 +780,12 @@ export class GameEngine {
           }
 
           p.y = plat.y - p.height;
+
+          // Track last landed platform for revive (only stable types)
+          if (!plat.broken && plat.type !== 'breakable' && plat.type !== 'vanishing' && plat.type !== 'reward') {
+            this.lastLandedPlatform = { x: plat.x, y: plat.y, width: plat.width };
+          }
+
           break;
         }
       }
