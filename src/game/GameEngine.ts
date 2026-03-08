@@ -141,8 +141,8 @@ export class GameEngine {
   // Double jump visual timer
   doubleJumpFlashTimer = 0;
 
-  // Last stable platform the player landed on (for revive)
-  lastLandedPlatform: { x: number; y: number; width: number } | null = null;
+  // Last stable platform the player landed on (for revive) — direct reference
+  lastLandedPlatformRef: Platform | null = null;
 
   // Revive grace state
   reviveGraceTimer = 0;
@@ -350,26 +350,39 @@ export class GameEngine {
   revive() {
     const p = this.player;
 
-    // 1. Respawn on last safe platform
-    let spawnPlatX: number;
-    let spawnPlatY: number;
-    let spawnPlatW: number;
+    // 1. Respawn on last safe platform (validate it still exists in active platforms)
+    let spawnPlat: Platform | null = null;
 
-    if (this.lastLandedPlatform) {
-      const lp = this.lastLandedPlatform;
-      spawnPlatX = lp.x;
-      spawnPlatY = lp.y;
-      spawnPlatW = lp.width;
-    } else {
-      // Fallback: create a platform at current height
-      spawnPlatW = 100;
-      spawnPlatY = p.y + 20;
-      spawnPlatX = Math.max(0, Math.min(this.width - spawnPlatW, p.x));
-      this.platforms.push({
-        x: spawnPlatX, y: spawnPlatY, width: spawnPlatW, height: PLATFORM_HEIGHT,
-        type: 'normal', broken: false,
-      });
+    if (this.lastLandedPlatformRef && this.platforms.includes(this.lastLandedPlatformRef) && !this.lastLandedPlatformRef.broken) {
+      spawnPlat = this.lastLandedPlatformRef;
     }
+
+    if (!spawnPlat) {
+      // Fallback: find the highest non-broken normal platform near the player
+      const candidates = this.platforms
+        .filter(pl => !pl.broken && pl.visible !== false && pl.type !== 'danger' && pl.type !== 'vanishing')
+        .sort((a, b) => a.y - b.y); // lowest y = highest on screen
+      
+      // Pick a platform near the player's last position
+      spawnPlat = candidates.find(pl => pl.y < p.y + 100 && pl.y > this.cameraY - 50) || null;
+    }
+
+    if (!spawnPlat) {
+      // Ultimate fallback: create a platform
+      const safeW = 110;
+      const safeY = p.y + 20;
+      const safeX = Math.max(0, Math.min(this.width - safeW, p.x));
+      spawnPlat = {
+        x: safeX, y: safeY, width: safeW, height: PLATFORM_HEIGHT,
+        type: 'normal', broken: false,
+      };
+      this.platforms.push(spawnPlat);
+    }
+
+    // Use current platform position (handles moving platforms)
+    const spawnPlatX = spawnPlat.x;
+    const spawnPlatY = spawnPlat.y;
+    const spawnPlatW = spawnPlat.width;
 
     p.x = spawnPlatX + spawnPlatW / 2 - p.width / 2;
     p.y = spawnPlatY - p.height;
@@ -659,6 +672,7 @@ export class GameEngine {
             y: itemY,
             type: itemDef.type,
             collected: false,
+            phaseOffset: Math.random() * Math.PI * 2,
             ...(platform.moveSpeed ? { linkedPlatform: platform, offsetX: 0, offsetY: itemY - platform.y } : {}),
           });
           this.platformsSinceLastItem = 0;
@@ -826,7 +840,7 @@ export class GameEngine {
 
           // Track last landed platform for revive (only stable types)
           if (!plat.broken && plat.type !== 'breakable' && plat.type !== 'vanishing' && plat.type !== 'reward') {
-            this.lastLandedPlatform = { x: plat.x, y: plat.y, width: plat.width };
+            this.lastLandedPlatformRef = plat;
           }
 
           break;
@@ -1450,7 +1464,7 @@ export class GameEngine {
     if (!def) return;
 
     const time = performance.now() / 1000;
-    const bobY = Math.sin(time * 3 + item.x) * 4;
+    const bobY = Math.sin(time * 3 + item.phaseOffset) * 4;
     const pulse = Math.sin(time * 4) * 0.2 + 0.8;
 
     // Glow

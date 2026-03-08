@@ -72,6 +72,7 @@ export interface ItemPickup {
   linkedPlatform?: Platform; // direct reference for moving platforms
   offsetX?: number;
   offsetY?: number;
+  phaseOffset: number; // stable value for bob animation
 }
 
 export interface ActiveEffect {
