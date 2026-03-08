@@ -141,6 +141,9 @@ export class GameEngine {
   // Double jump visual timer
   doubleJumpFlashTimer = 0;
 
+  // Last stable platform the player landed on (for revive)
+  lastLandedPlatform: { x: number; y: number; width: number } | null = null;
+
   // Revive grace state
   reviveGraceTimer = 0;
   reviveInputLockTimer = 0;
