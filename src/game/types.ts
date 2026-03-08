@@ -99,19 +99,16 @@ export type GameScreen = 'menu' | 'playing' | 'paused' | 'gameOver' | 'shop' | '
 export interface LevelDefinition {
   id: number;
   name: string;
-  targetHeight: number; // score to reach
+  targetHeight: number;
   normalChance: number;
   breakableChance: number;
   movingChance: number;
-  boostChance: number;
   rewardChance: number;
   platformWidthMod: number;
   lavaSpeedMod: number;
-  lavaEndAccel: number; // lava acceleration multiplier in last 20% of level
+  lavaEndAccel: number;
   lavaControlChance: number;
   dangerChance: number;
-  invincibleChance: number;
-  vanishingChance: number;
 }
 
 export interface GameState {
