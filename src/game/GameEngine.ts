@@ -439,7 +439,9 @@ export class GameEngine {
     const levelId = this.currentLevelDef?.id ?? 1;
 
     while (this.highestPlatformY > targetY) {
-      const gap = PLATFORM_GAP_MIN + Math.random() * (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN);
+      const gapScale = getGapScale(levelId);
+      const scaledGapMax = PLATFORM_GAP_MIN + (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN) * gapScale;
+      const gap = PLATFORM_GAP_MIN + Math.random() * (scaledGapMax - PLATFORM_GAP_MIN);
       const newY = this.highestPlatformY - gap;
       let newX = Math.random() * (this.width - PLATFORM_WIDTH);
 
