@@ -48,8 +48,8 @@ const MainMenu = ({ onStart, onShop, onSettings }: MainMenuProps) => {
         </button>
       </div>
 
-      {/* Lava glow at bottom */}
-      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-lava/30 via-lava/10 to-transparent z-0" />
+      {/* Lava glow at bottom is now part of EmberBackground */}
+
 
       <div className="flex flex-col items-center gap-8 animate-fade-in relative z-10">
         {/* Title with glow */}
