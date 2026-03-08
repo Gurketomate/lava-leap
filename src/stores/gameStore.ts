@@ -81,6 +81,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   maxUnlockedLevel: 1,
   runDeaths: 0,
   runCoinPercent: 0,
+  runTotalCoinsSpawned: 0,
   lastRunStars: 0,
   levelStars: {},
 
