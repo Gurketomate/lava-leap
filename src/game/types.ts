@@ -94,7 +94,7 @@ export interface PermanentUpgrade {
   effectUnit: string;
 }
 
-export type GameScreen = 'menu' | 'playing' | 'paused' | 'gameOver' | 'shop' | 'levelComplete' | 'levelSelect';
+export type GameScreen = 'menu' | 'playing' | 'paused' | 'gameOver' | 'shop' | 'levelComplete' | 'levelSelect' | 'modeSelect';
 
 export interface LevelDefinition {
   id: number;
