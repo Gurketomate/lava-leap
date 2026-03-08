@@ -70,11 +70,11 @@ export const SCREEN_SHAKE_MAX = 8; // max px offset
 import type { DifficultyPhase, LevelDefinition } from './types';
 
 export const DIFFICULTY_PHASES: DifficultyPhase[] = [
-  { minTime: 0,   normalChance: 0.90, breakableChance: 0.02, movingChance: 0.00, boostChance: 0.08, rewardChance: 0.00, platformWidthMod: 1.15, lavaSpeedMod: 1.0 },
-  { minTime: 30,  normalChance: 0.62, breakableChance: 0.08, movingChance: 0.20, boostChance: 0.08, rewardChance: 0.02, platformWidthMod: 1.0,  lavaSpeedMod: 1.1 },
-  { minTime: 60,  normalChance: 0.42, breakableChance: 0.30, movingChance: 0.15, boostChance: 0.08, rewardChance: 0.05, platformWidthMod: 0.85, lavaSpeedMod: 1.2 },
-  { minTime: 90,  normalChance: 0.30, breakableChance: 0.15, movingChance: 0.40, boostChance: 0.08, rewardChance: 0.07, platformWidthMod: 0.85, lavaSpeedMod: 1.3 },
-  { minTime: 120, normalChance: 0.20, breakableChance: 0.25, movingChance: 0.35, boostChance: 0.10, rewardChance: 0.10, platformWidthMod: 0.80, lavaSpeedMod: 1.5 },
+  { minTime: 0,   normalChance: 0.90, breakableChance: 0.02, movingChance: 0.00, rewardChance: 0.00, platformWidthMod: 1.15, lavaSpeedMod: 1.0 },
+  { minTime: 30,  normalChance: 0.62, breakableChance: 0.08, movingChance: 0.20, rewardChance: 0.02, platformWidthMod: 1.0,  lavaSpeedMod: 1.1 },
+  { minTime: 60,  normalChance: 0.42, breakableChance: 0.30, movingChance: 0.15, rewardChance: 0.05, platformWidthMod: 0.85, lavaSpeedMod: 1.2 },
+  { minTime: 90,  normalChance: 0.30, breakableChance: 0.15, movingChance: 0.40, rewardChance: 0.07, platformWidthMod: 0.85, lavaSpeedMod: 1.3 },
+  { minTime: 120, normalChance: 0.20, breakableChance: 0.25, movingChance: 0.35, rewardChance: 0.10, platformWidthMod: 0.80, lavaSpeedMod: 1.5 },
 ];
 
 // Risk/reward coin scaling by level tier
