@@ -960,10 +960,12 @@ export class GameEngine {
 
     // === ADAPTIVE LAVA SYSTEM (speed-based) ===
     const lavaSlowMult = Math.pow(0.7, this.lavaSlowStacks);
-    const levelSpeedMod = this.currentLevelDef?.lavaSpeedMod ?? 1;
+    const levelSpeedMod = this.isEndless
+      ? (this.getEndlessDifficulty().lavaSpeedMod)
+      : (this.currentLevelDef?.lavaSpeedMod ?? 1);
 
     let endAccel = 1;
-    if (this.currentLevelDef) {
+    if (!this.isEndless && this.currentLevelDef) {
       const progress = this.score / this.currentLevelDef.targetHeight;
       if (progress > 0.8) {
         const endProgress = (progress - 0.8) / 0.2;
