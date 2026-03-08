@@ -79,10 +79,10 @@ export const DIFFICULTY_PHASES: DifficultyPhase[] = [
 
 // Risk/reward coin scaling by level tier
 export const REWARD_COINS_BY_TIER: Record<string, number> = {
-  intro: 5,   // levels 1-5
-  mid: 7,     // levels 6-15
-  hard: 10,   // levels 16-30
-  elite: 12,  // levels 31+
+  intro: 3,   // levels 1-5
+  mid: 4,     // levels 6-15
+  hard: 5,    // levels 16-30
+  elite: 6,   // levels 31+
 };
 
 export function getRewardCoinCount(levelId: number): number {
