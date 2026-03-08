@@ -11,7 +11,7 @@ export interface Player {
   jumpsRemaining: number;
 }
 
-export type PlatformType = 'normal' | 'breakable' | 'moving' | 'boost' | 'reward' | 'lavaControl' | 'danger' | 'invincible' | 'vanishing';
+export type PlatformType = 'normal' | 'breakable' | 'moving' | 'reward' | 'lavaControl' | 'danger' | 'invincible';
 
 export interface Platform {
   x: number;
