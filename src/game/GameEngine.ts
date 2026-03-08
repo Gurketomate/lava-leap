@@ -201,7 +201,8 @@ export class GameEngine {
     this.coinSpawnBonus = coinSpawnBonus;
     this.lavaResistBonus = lavaResistBonus;
     this.startWithShield = startWithShield;
-    this.reachability = computeReachability(jumpBonus);
+    // Always use base reachability for platform generation — upgrades make it easier, never required
+    this.reachability = computeReachability(0);
   }
 
   setLevel(levelDef: LevelDefinition) {
