@@ -11,12 +11,15 @@ interface GameOverScreenProps {
 }
 
 const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) => {
-  const { score, highScore, coins, currentLevel } = useGameStore();
+  const { score, highScore, coins, currentLevel, gameMode, endlessHighScore } = useGameStore();
   const { canShowRewardedAd, showRewardedAd, getCloseCallMessage } = useAdStore();
-  const isNewHigh = score >= highScore && score > 0;
+  const isEndless = gameMode === 'endless';
+  const isNewHigh = isEndless
+    ? score >= endlessHighScore && score > 0
+    : score >= highScore && score > 0;
   const [showingAd, setShowingAd] = useState(false);
 
-  const levelDef = LEVELS.find(l => l.id === currentLevel);
+  const levelDef = !isEndless ? LEVELS.find(l => l.id === currentLevel) : null;
   const closeCallMsg = levelDef ? getCloseCallMessage(score, levelDef.targetHeight) : null;
   const canRevive = canShowRewardedAd();
 
@@ -40,11 +43,11 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
       <div className="flex flex-col items-center gap-5 animate-fade-in">
         <div className="text-center">
           <h2 className="text-4xl md:text-5xl font-display font-black text-destructive">
-            LEVEL {currentLevel} — GAME OVER
+            {isEndless ? 'GAME OVER' : `LEVEL ${currentLevel} — GAME OVER`}
           </h2>
           {isNewHigh && (
             <p className="text-accent font-display font-bold text-lg mt-1 animate-float text-glow-accent">
-              ⭐ NEW HIGH SCORE! ⭐
+              {isEndless ? '🏔️ NEW BEST HEIGHT! 🏔️' : '⭐ NEW HIGH SCORE! ⭐'}
             </p>
           )}
         </div>
@@ -59,12 +62,16 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
 
         <div className="flex gap-4">
           <div className="glass-panel px-6 py-4 text-center min-w-[100px]">
-            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Score</p>
+            <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">
+              {isEndless ? 'Height' : 'Score'}
+            </p>
             <p className="text-3xl font-display font-bold text-foreground">{score}</p>
           </div>
           <div className="glass-panel px-6 py-4 text-center min-w-[100px]">
             <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Best</p>
-            <p className="text-3xl font-display font-bold text-primary text-glow-primary">{Math.max(highScore, score)}</p>
+            <p className="text-3xl font-display font-bold text-primary text-glow-primary">
+              {isEndless ? Math.max(endlessHighScore, score) : Math.max(highScore, score)}
+            </p>
           </div>
           <div className="glass-panel px-6 py-4 text-center min-w-[100px]">
             <p className="text-xs text-muted-foreground font-body uppercase tracking-wider">Coins</p>
@@ -96,7 +103,7 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
               bg-gradient-to-r from-primary to-lava-glow
               hover:scale-105 active:scale-95 transition-transform duration-150 lava-glow"
           >
-            🔁 RETRY
+            🔁 {isEndless ? 'RETRY' : 'RETRY'}
           </button>
           <button
             onClick={handleMenu}

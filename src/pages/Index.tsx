@@ -6,6 +6,7 @@ import GameOverScreen from '@/components/game/GameOverScreen';
 import PermanentShop from '@/components/game/PermanentShop';
 import LevelCompleteScreen from '@/components/game/LevelCompleteScreen';
 import LevelSelectScreen from '@/components/game/LevelSelectScreen';
+import ModeSelectScreen from '@/components/game/ModeSelectScreen';
 import SettingsMenu from '@/components/game/SettingsMenu';
 import { useGameStore } from '@/stores/gameStore';
 import { useAdStore } from '@/stores/adStore';
@@ -39,17 +40,7 @@ const Index = () => {
     return { jumpBonus, coinSpawnBonus, lavaResistBonus, startWithShield };
   }, []);
 
-  const startLevel = useCallback((levelId: number) => {
-    const engine = engineRef.current;
-    if (!engine) return;
-
-    const levelDef = LEVELS.find(l => l.id === levelId);
-    if (!levelDef) return;
-
-    const bonuses = getPermanentBonuses();
-    engine.setPermanentBonuses(bonuses.jumpBonus, bonuses.coinSpawnBonus, bonuses.lavaResistBonus, bonuses.startWithShield);
-    engine.setLevel(levelDef);
-
+  const setupEngineCallbacks = useCallback((engine: GameEngine) => {
     engine.onScoreUpdate = (score: number) => {
       useGameStore.getState().setScore(score);
     };
@@ -79,18 +70,54 @@ const Index = () => {
     engine.onActiveEffectsUpdate = (effects: ActiveEffect[]) => {
       setActiveEffects([...effects]);
     };
+  }, []);
 
+  const startLevel = useCallback((levelId: number) => {
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    const levelDef = LEVELS.find(l => l.id === levelId);
+    if (!levelDef) return;
+
+    const bonuses = getPermanentBonuses();
+    engine.setPermanentBonuses(bonuses.jumpBonus, bonuses.coinSpawnBonus, bonuses.lavaResistBonus, bonuses.startWithShield);
+    engine.isEndless = false;
+    engine.setLevel(levelDef);
+    setupEngineCallbacks(engine);
+
+    store.setGameMode('level');
     store.setCurrentLevel(levelId);
     store.resetRun();
     setActiveEffects([]);
     engine.start();
-  }, [store, getPermanentBonuses]);
+  }, [store, getPermanentBonuses, setupEngineCallbacks]);
+
+  const startEndless = useCallback(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    const bonuses = getPermanentBonuses();
+    engine.setPermanentBonuses(bonuses.jumpBonus, bonuses.coinSpawnBonus, bonuses.lavaResistBonus, bonuses.startWithShield);
+    engine.isEndless = true;
+    engine.setLevel(null as any); // no fixed level
+    setupEngineCallbacks(engine);
+
+    store.setGameMode('endless');
+    store.resetRun();
+    setActiveEffects([]);
+    engine.start();
+  }, [store, getPermanentBonuses, setupEngineCallbacks]);
 
   const handleRestart = useCallback(() => {
     adStore.recordDeath();
     adStore.resetRunAdState();
-    startLevel(store.currentLevel);
-  }, [startLevel, store.currentLevel, adStore]);
+    const gs = useGameStore.getState();
+    if (gs.gameMode === 'endless') {
+      startEndless();
+    } else {
+      startLevel(gs.currentLevel);
+    }
+  }, [startLevel, startEndless, adStore]);
 
   const handleNextLevel = useCallback(() => {
     const nextId = store.currentLevel + 1;
@@ -133,15 +160,22 @@ const Index = () => {
       {!isLoading && store.screen === 'playing' && <GameHUD activeEffects={activeEffects} />}
       {!isLoading && store.screen === 'menu' && (
         <MainMenu
-          onStart={() => store.setScreen('levelSelect')}
+          onStart={() => store.setScreen('modeSelect')}
           onShop={() => store.setScreen('shop')}
           onSettings={() => setShowSettings(true)}
+        />
+      )}
+      {!isLoading && store.screen === 'modeSelect' && (
+        <ModeSelectScreen
+          onLevelMode={() => store.setScreen('levelSelect')}
+          onEndlessMode={startEndless}
+          onBack={() => store.setScreen('menu')}
         />
       )}
       {!isLoading && store.screen === 'levelSelect' && (
         <LevelSelectScreen
           onSelectLevel={startLevel}
-          onBack={() => store.setScreen('menu')}
+          onBack={() => store.setScreen('modeSelect')}
         />
       )}
       {!isLoading && store.screen === 'gameOver' && <GameOverScreen onRestart={handleRestart} onMenu={handleMenu} onRevive={handleRevive} />}
