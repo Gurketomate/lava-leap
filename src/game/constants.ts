@@ -167,11 +167,11 @@ export const LEVELS: LevelDefinition[] = (() => {
         'Magma Stream', 'Volcano Heart', 'Inferno', 'Firestorm', 'Hell\'s Maw'];
       name = hardNames[id - 16];
       targetHeight = Math.floor(lerp(550, 650, lt));
-      normalChance = lerp(0.28, 0.08, lt);
+      normalChance = lerp(0.30, 0.12, lt);
       breakableChance = lerp(0.20, 0.28, lt);
       movingChance = lerp(0.26, 0.34, lt);
       boostChance = lerp(0.08, 0.06, lt);
-      rewardChance = lerp(0.07, 0.10, lt);
+      rewardChance = lerp(0.05, 0.07, lt);
       platformWidthMod = lerp(0.82, 0.65, lt);
       lavaSpeedMod = lerp(1.30, 2.00, lt);
       lavaEndAccel = lerp(1.50, 2.00, lt);
