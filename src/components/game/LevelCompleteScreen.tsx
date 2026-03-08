@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { useAdStore } from '@/stores/adStore';
 import { useSoundClick } from '@/hooks/useSoundClick';
+import EmberBackground from '@/components/game/EmberBackground';
 
 interface LevelCompleteScreenProps {
   onNextLevel: () => void;
@@ -61,15 +62,16 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm">
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-accent/20 to-transparent" />
+      <EmberBackground />
 
-      <div className="flex flex-col items-center gap-5 animate-fade-in max-w-sm w-full px-4">
+      <div className="flex flex-col items-center gap-5 animate-fade-in max-w-sm w-full px-4 relative z-10">
         {/* Header */}
-        <div className="text-center">
-          <p className="text-xs text-accent font-display uppercase tracking-[0.3em]">
+        <div className="text-center relative">
+          <div className="absolute inset-0 -inset-x-12 -inset-y-8 rounded-full blur-3xl bg-accent/15 animate-pulse-lava" />
+          <p className="text-xs text-accent font-display uppercase tracking-[0.3em] relative">
             COMPLETE
           </p>
-          <h2 className="text-4xl md:text-5xl font-display font-black text-foreground mt-1">
+          <h2 className="text-4xl md:text-5xl font-display font-black text-foreground mt-1 relative">
             LEVEL {currentLevel}
           </h2>
         </div>

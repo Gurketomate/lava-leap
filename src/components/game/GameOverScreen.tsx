@@ -3,6 +3,7 @@ import { useGameStore } from '@/stores/gameStore';
 import { useAdStore } from '@/stores/adStore';
 import { LEVELS } from '@/game/constants';
 import { useSoundClick } from '@/hooks/useSoundClick';
+import EmberBackground from '@/components/game/EmberBackground';
 
 interface GameOverScreenProps {
   onRestart: () => void;
@@ -38,11 +39,12 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm">
-      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-destructive/20 to-transparent pointer-events-none" />
+      <EmberBackground />
 
-      <div className="flex flex-col items-center gap-5 animate-fade-in">
-        <div className="text-center">
-          <h2 className="text-4xl md:text-5xl font-display font-black text-destructive">
+      <div className="flex flex-col items-center gap-5 animate-fade-in relative z-10">
+        <div className="text-center relative">
+          <div className="absolute inset-0 -inset-x-12 -inset-y-8 rounded-full blur-3xl bg-destructive/15 animate-pulse-lava" />
+          <h2 className="text-4xl md:text-5xl font-display font-black text-destructive relative">
             {isEndless ? 'GAME OVER' : `LEVEL ${currentLevel} — GAME OVER`}
           </h2>
           {isNewHigh && (
