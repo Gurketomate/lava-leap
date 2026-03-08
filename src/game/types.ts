@@ -69,7 +69,9 @@ export interface ItemPickup {
   y: number;
   type: ItemType;
   collected: boolean;
-  platformIndex: number; // link to platform
+  linkedPlatform?: Platform; // direct reference for moving platforms
+  offsetX?: number;
+  offsetY?: number;
 }
 
 export interface ActiveEffect {
