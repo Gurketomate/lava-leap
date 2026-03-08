@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { GameEngine } from '@/game/GameEngine';
 import { useGameStore } from '@/stores/gameStore';
-import { unlockAudio } from '@/game/SoundManager';
+import { unlockAudio, pauseMusic, resumeMusic, stopLavaSound, startLavaSound } from '@/game/SoundManager';
 
 interface GameCanvasProps {
   onReady: (engine: GameEngine) => void;
@@ -69,13 +69,17 @@ const GameCanvas = ({ onReady }: GameCanvasProps) => {
       if (['ArrowLeft', 'a', 'A', 'ArrowRight', 'd', 'D'].includes(e.key)) engine.setInput(0);
     };
 
-    // Tab blur/focus pause
+    // Tab blur/focus pause — also pause/resume audio
     const handleVisibilityChange = () => {
       if (document.hidden && engine.running) {
         engine.paused = true;
+        pauseMusic();
+        stopLavaSound();
       } else if (!document.hidden && engine.running && engine.paused) {
         engine.paused = false;
         engine.lastTime = performance.now();
+        resumeMusic();
+        startLavaSound();
         requestAnimationFrame(engine.loop);
       }
     };

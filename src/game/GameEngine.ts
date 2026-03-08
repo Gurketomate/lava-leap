@@ -1085,7 +1085,10 @@ export class GameEngine {
   }
 
   spawnParticles(x: number, y: number, color: string, count: number) {
-    for (let i = 0; i < count; i++) {
+    // Cap total particles for performance
+    const MAX_PARTICLES = 150;
+    const spawnCount = Math.min(count, MAX_PARTICLES - this.particles.length);
+    for (let i = 0; i < spawnCount; i++) {
       this.particles.push({
         x, y,
         vx: (Math.random() - 0.5) * 200,

@@ -20,6 +20,7 @@ const Index = () => {
   const engineRef = useRef<GameEngine | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [activeEffects, setActiveEffects] = useState<ActiveEffect[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const adStore = useAdStore();
 
@@ -115,30 +116,38 @@ const Index = () => {
 
   const handleEngineReady = useCallback((engine: GameEngine) => {
     engineRef.current = engine;
+    setIsLoading(false);
   }, []);
 
   return (
     <div className="fixed inset-0 bg-background overflow-hidden">
       <GameCanvas onReady={handleEngineReady} />
 
-      {store.screen === 'playing' && <GameHUD activeEffects={activeEffects} />}
-      {store.screen === 'menu' && (
+      {isLoading && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#08080f]">
+          <div className="text-4xl font-bold text-orange-500 mb-4 animate-pulse">🌋</div>
+          <div className="text-lg text-muted-foreground">Loading...</div>
+        </div>
+      )}
+
+      {!isLoading && store.screen === 'playing' && <GameHUD activeEffects={activeEffects} />}
+      {!isLoading && store.screen === 'menu' && (
         <MainMenu
           onStart={() => store.setScreen('levelSelect')}
           onShop={() => store.setScreen('shop')}
           onSettings={() => setShowSettings(true)}
         />
       )}
-      {store.screen === 'levelSelect' && (
+      {!isLoading && store.screen === 'levelSelect' && (
         <LevelSelectScreen
           onSelectLevel={startLevel}
           onBack={() => store.setScreen('menu')}
         />
       )}
-      {store.screen === 'gameOver' && <GameOverScreen onRestart={handleRestart} onMenu={handleMenu} onRevive={handleRevive} />}
-      {store.screen === 'shop' && <PermanentShop onBack={() => store.setScreen('menu')} />}
-      {store.screen === 'levelComplete' && <LevelCompleteScreen onNextLevel={handleNextLevel} onMenu={handleMenu} />}
-      {showSettings && <SettingsMenu onClose={() => setShowSettings(false)} />}
+      {!isLoading && store.screen === 'gameOver' && <GameOverScreen onRestart={handleRestart} onMenu={handleMenu} onRevive={handleRevive} />}
+      {!isLoading && store.screen === 'shop' && <PermanentShop onBack={() => store.setScreen('menu')} />}
+      {!isLoading && store.screen === 'levelComplete' && <LevelCompleteScreen onNextLevel={handleNextLevel} onMenu={handleMenu} />}
+      {!isLoading && showSettings && <SettingsMenu onClose={() => setShowSettings(false)} />}
     </div>
   );
 };
