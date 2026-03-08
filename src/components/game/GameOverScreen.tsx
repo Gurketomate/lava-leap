@@ -44,7 +44,7 @@ const GameOverScreen = ({ onRestart, onMenu, onRevive }: GameOverScreenProps) =>
       <div className="flex flex-col items-center gap-5 animate-fade-in relative z-10">
         <div className="text-center relative">
           <div className="absolute inset-0 -inset-x-12 -inset-y-8 rounded-full blur-3xl bg-destructive/15 animate-pulse-lava" />
-          <h2 className="text-4xl md:text-5xl font-display font-black text-destructive">
+          <h2 className="text-4xl md:text-5xl font-display font-black text-destructive relative">
             {isEndless ? 'GAME OVER' : `LEVEL ${currentLevel} — GAME OVER`}
           </h2>
           {isNewHigh && (
