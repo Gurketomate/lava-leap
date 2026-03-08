@@ -36,7 +36,7 @@ const ITEM_WEIGHTS: Record<ItemType, number> = {
 };
 
 function getItemSpawnChance(levelId: number, isEndless: boolean = false): number {
-  if (isEndless) return 0.07;
+  if (isEndless) return 0.04;
   if (levelId <= 5) return 0.05;
   if (levelId <= 15) return 0.07;
   return 0.08;
@@ -217,20 +217,23 @@ export class GameEngine {
   /** Get endless mode difficulty scaling based on current score */
   getEndlessDifficulty() {
     const s = this.score;
-    const t = Math.min(1, s / 5000); // full difficulty at score 5000
+    // Fast ramp: noticeable difficulty by score 300, full difficulty at 1500
+    const t = Math.min(1, s / 1500);
+    // Extra curve: front-load the difficulty increase
+    const t2 = t * (2 - t); // ease-out: rises fast early, plateaus later
     return {
-      normalChance: Math.max(0.10, 0.70 - t * 0.60),
-      breakableChance: 0.05 + t * 0.20,
-      movingChance: 0.05 + t * 0.30,
-      boostChance: 0.08,
-      rewardChance: 0.02 + t * 0.05,
-      lavaControlChance: 0.02 + t * 0.04,
-      dangerChance: t * 0.12,
-      invincibleChance: 0.01 + t * 0.03,
-      vanishingChance: t * 0.14,
-      platformWidthMod: Math.max(0.55, 1.15 - t * 0.60),
-      lavaSpeedMod: 0.8 + t * 2.2,
-      gapScale: 1.0 + t * 0.24,
+      normalChance: Math.max(0.05, 0.55 - t2 * 0.50),
+      breakableChance: 0.08 + t2 * 0.22,
+      movingChance: 0.12 + t2 * 0.28,
+      boostChance: Math.max(0.04, 0.08 - t2 * 0.04),
+      rewardChance: 0.02 + t2 * 0.05,
+      lavaControlChance: 0.03 + t2 * 0.04,
+      dangerChance: 0.02 + t2 * 0.16,
+      invincibleChance: 0.01 + t2 * 0.03,
+      vanishingChance: 0.03 + t2 * 0.15,
+      platformWidthMod: Math.max(0.50, 1.05 - t2 * 0.55),
+      lavaSpeedMod: 1.0 + t2 * 2.5,
+      gapScale: 1.0 + t2 * 0.24,
     };
   }
 
