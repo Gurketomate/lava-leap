@@ -58,7 +58,7 @@ const MainMenu = ({ onStart, onShop, onSettings }: MainMenuProps) => {
           <div className="absolute inset-0 -inset-x-12 -inset-y-8 rounded-full blur-3xl bg-lava/15 animate-pulse-lava" />
           
           <h1 className="text-5xl md:text-7xl font-display font-black text-primary text-glow-primary tracking-tight relative">
-            🔥 LAVA LEAP
+            🔥 LAVA LEAP 🔥
           </h1>
           <p className="text-muted-foreground font-body mt-3 text-sm tracking-widest relative">
             Jump. Collect. Survive.
