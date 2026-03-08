@@ -717,6 +717,8 @@ export class GameEngine {
       if (e.remaining <= 0) {
         // Effect expired — clean up
         if (e.type === 'coinMagnet') this.hasCoinMagnet = false;
+        if (e.type === 'shield') this.hasShield = false;
+        if (e.type === 'doubleJump') { this.hasDoubleJump = false; this.player.doubleJumpUsed = true; }
         return false;
       }
       return true;
