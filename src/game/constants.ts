@@ -187,12 +187,12 @@ export const LEVELS: LevelDefinition[] = (() => {
       breakableChance = 0.24;
       movingChance = 0.30;
       boostChance = 0.06;
-      rewardChance = 0.10;
+      rewardChance = 0.08;
       platformWidthMod = 0.55;
       lavaSpeedMod = 3.20;
       lavaEndAccel = 3.50;
       lavaControlChance = 0.08;
-      dangerChance = 0.18;
+      dangerChance = 0.20;
       invincibleChance = 0.04;
       vanishingChance = 0.18;
     } else {
