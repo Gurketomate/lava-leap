@@ -1,6 +1,7 @@
 import { useGameStore } from '@/stores/gameStore';
 import { PERMANENT_UPGRADES } from '@/game/constants';
 import { useSoundClick } from '@/hooks/useSoundClick';
+import EmberBackground from '@/components/game/EmberBackground';
 
 interface PermanentShopProps {
   onBack: () => void;
@@ -11,11 +12,14 @@ const PermanentShop = ({ onBack }: PermanentShopProps) => {
   const handleBack = useSoundClick(onBack);
 
   return (
-    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm">
-      <div className="flex flex-col items-center gap-6 animate-fade-in max-w-lg w-full px-4">
-        <div className="text-center">
-          <h2 className="text-3xl font-display font-bold text-foreground">UPGRADES SHOP</h2>
-          <div className="flex items-center justify-center gap-2 mt-2">
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm">
+      <EmberBackground />
+
+      <div className="flex flex-col items-center gap-6 animate-fade-in max-w-lg w-full px-4 relative z-10">
+        <div className="text-center relative">
+          <div className="absolute inset-0 -inset-x-12 -inset-y-8 rounded-full blur-3xl bg-lava/15 animate-pulse-lava" />
+          <h2 className="text-3xl font-display font-bold text-primary text-glow-primary relative">UPGRADES SHOP</h2>
+          <div className="flex items-center justify-center gap-2 mt-2 relative">
             <span className="text-lg">🪙</span>
             <span className="text-xl font-display font-bold text-accent coin-glow">{totalCoins}</span>
           </div>
