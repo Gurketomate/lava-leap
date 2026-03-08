@@ -672,6 +672,7 @@ export class GameEngine {
             y: itemY,
             type: itemDef.type,
             collected: false,
+            phaseOffset: Math.random() * Math.PI * 2,
             ...(platform.moveSpeed ? { linkedPlatform: platform, offsetX: 0, offsetY: itemY - platform.y } : {}),
           });
           this.platformsSinceLastItem = 0;
