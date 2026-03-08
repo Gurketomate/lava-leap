@@ -988,13 +988,20 @@ export class GameEngine {
       return;
     }
 
-    // Update platform-linked coins (move with platform)
+    // Update platform-linked coins & items (move with platform)
     for (const coin of this.coins) {
-      if (coin.collected || coin.platformIndex == null) continue;
-      const plat = this.platforms[coin.platformIndex];
-      if (!plat) continue;
+      if (coin.collected || !coin.linkedPlatform) continue;
+      const plat = coin.linkedPlatform;
+      if (plat.broken) continue;
       coin.x = plat.x + plat.width / 2 + (coin.offsetX ?? 0);
       coin.y = plat.y + (coin.offsetY ?? -25);
+    }
+    for (const item of this.items) {
+      if (item.collected || !item.linkedPlatform) continue;
+      const plat = item.linkedPlatform;
+      if (plat.broken) continue;
+      item.x = plat.x + plat.width / 2 + (item.offsetX ?? 0);
+      item.y = plat.y + (item.offsetY ?? -20);
     }
 
     // Coin collection
