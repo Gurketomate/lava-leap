@@ -42,7 +42,14 @@ const GameCanvas = ({ onReady }: GameCanvasProps) => {
 
     const relX = clientX - rect.left;
     const mid = rect.width / 2;
-    engineRef.current.setInput(relX < mid ? -1 : 1);
+    const newDir = relX < mid ? -1 : 1;
+    
+    // Single tap while airborne triggers double jump
+    if (!('touches' in e) || e.touches.length === 1) {
+      engineRef.current.doDoubleJump();
+    }
+    
+    engineRef.current.setInput(newDir);
   }, []);
 
   useEffect(() => {
