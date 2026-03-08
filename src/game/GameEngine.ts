@@ -95,6 +95,7 @@ export class GameEngine {
   // Level system
   currentLevelDef: LevelDefinition | null = null;
   levelComplete = false;
+  isEndless = false;
   levelCompleteTimer = 0;
 
   // Power-up state (from items)
