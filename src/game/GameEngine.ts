@@ -36,7 +36,7 @@ const ITEM_WEIGHTS: Record<ItemType, number> = {
 };
 
 function getItemSpawnChance(levelId: number, isEndless: boolean = false): number {
-  if (isEndless) return 0.07;
+  if (isEndless) return 0.04;
   if (levelId <= 5) return 0.05;
   if (levelId <= 15) return 0.07;
   return 0.08;
