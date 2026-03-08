@@ -349,16 +349,14 @@ export class GameEngine {
 
   revive() {
     const p = this.player;
-    const safePlatforms = this.platforms
-      .filter(pl => !pl.broken && pl.type !== 'breakable' && pl.type !== 'vanishing'
-        && (pl.visible !== false) && pl.y > this.cameraY - 100)
-      .sort((a, b) => a.y - b.y);
 
-    const lastSafe = safePlatforms.length > 0 ? safePlatforms[0] : null;
-    if (lastSafe) {
-      p.x = lastSafe.x + lastSafe.width / 2 - p.width / 2;
-      p.y = lastSafe.y - p.height;
+    // Use the last platform the player actually landed on
+    if (this.lastLandedPlatform) {
+      const lp = this.lastLandedPlatform;
+      p.x = lp.x + lp.width / 2 - p.width / 2;
+      p.y = lp.y - p.height;
     } else {
+      // Fallback: spawn a platform at current position
       const platW = 100;
       const spawnY = p.y + 20;
       const spawnX = Math.max(0, Math.min(this.width - platW, p.x));
@@ -379,10 +377,11 @@ export class GameEngine {
     this.jumpRequested = false;
     this.jumpBufferTimer = 0;
 
-    this.lavaY = Math.max(this.lavaY, p.y + this.height * 0.5);
-    this.reviveGraceTimer = 0.75;
+    // Push lava down to give recovery room (60% of screen below player)
+    this.lavaY = Math.max(this.lavaY, p.y + this.height * 0.6);
+    this.reviveGraceTimer = 1.0;  // 1 second invulnerability
     this.reviveInputLockTimer = 0.3;
-    this.reviveLavaPauseTimer = 0.5;
+    this.reviveLavaPauseTimer = 0.8;  // longer lava pause for recovery
     this.cameraY = p.y - this.height * 0.35;
     this.spawnParticles(p.x + p.width / 2, p.y + p.height, '#00ff88', 15);
 
