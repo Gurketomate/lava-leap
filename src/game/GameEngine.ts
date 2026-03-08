@@ -584,7 +584,6 @@ export class GameEngine {
       }
 
       this.platforms.push(platform);
-      const platIndex = this.platforms.length - 1;
 
       // Coin spawning
       const rewardCoins = getRewardCoinCount(levelId);
@@ -593,27 +592,22 @@ export class GameEngine {
         const coinCount = type === 'reward' ? rewardCoins : 1;
         this.totalCoinsSpawned += coinCount;
 
-        // Use the actual platform width (reward platforms are narrower)
         const actualWidth = platform.width;
-        const platCenterX = newX + actualWidth / 2;
+        const platCenterX = platform.x + actualWidth / 2;
+        const isMoving = !!(platform.moveSpeed);
 
         if (coinCount <= 1) {
-          // Single coin: centered above platform
-          const coin: any = {
+          const coinY = platform.y - 25;
+          const coin: Coin = {
             x: platCenterX,
-            y: newY - 25,
+            y: coinY,
             radius: COIN_RADIUS,
             collected: false,
             angle: 0,
+            ...(isMoving ? { linkedPlatform: platform, offsetX: 0, offsetY: coinY - platform.y } : {}),
           };
-          if (type === 'reward' && platform.moveSpeed) {
-            coin.platformIndex = platIndex;
-            coin.offsetX = 0;
-            coin.offsetY = newY - 25 - platform.y;
-          }
           this.coins.push(coin);
         } else {
-          // Multi-coin cluster: jump-trajectory patterns only
           const maxSpread = Math.min(actualWidth * 0.8, coinCount * 14);
           const spacing = maxSpread / Math.max(coinCount - 1, 1);
           const pattern = Math.random();
@@ -625,38 +619,28 @@ export class GameEngine {
               const t = (c - halfCount) / Math.max(halfCount, 1);
               const arcHeight = 14 * (1 - t * t);
               const offsetX = t * halfCount * spacing;
-              const coinY = newY - 22 - arcHeight;
-              const coin: any = {
+              const coinY = platform.y - 22 - arcHeight;
+              this.coins.push({
                 x: platCenterX + offsetX,
                 y: coinY,
                 radius: COIN_RADIUS,
                 collected: false,
                 angle: 0,
-              };
-              if (type === 'reward' && platform.moveSpeed) {
-                coin.platformIndex = platIndex;
-                coin.offsetX = offsetX;
-                coin.offsetY = coinY - platform.y;
-              }
-              this.coins.push(coin);
+                ...(isMoving ? { linkedPlatform: platform, offsetX, offsetY: coinY - platform.y } : {}),
+              });
             }
           } else {
             // Vertical column — centered on platform
             for (let c = 0; c < coinCount; c++) {
-              const coinY = newY - 22 - c * 13;
-              const coin: any = {
+              const coinY = platform.y - 22 - c * 13;
+              this.coins.push({
                 x: platCenterX,
                 y: coinY,
                 radius: COIN_RADIUS,
                 collected: false,
                 angle: 0,
-              };
-              if (type === 'reward' && platform.moveSpeed) {
-                coin.platformIndex = platIndex;
-                coin.offsetX = 0;
-                coin.offsetY = coinY - platform.y;
-              }
-              this.coins.push(coin);
+                ...(isMoving ? { linkedPlatform: platform, offsetX: 0, offsetY: coinY - platform.y } : {}),
+              });
             }
           }
         }
@@ -664,17 +648,19 @@ export class GameEngine {
 
       // Item pickup spawning (rare, distance-gated, never on breakable)
       this.platformsSinceLastItem++;
+      const platIndex = this.platforms.length - 1;
       const spawnChance = getItemSpawnChance(levelId);
       if (['normal', 'moving'].includes(type) && newY < this.lavaY - 300 && this.platformsSinceLastItem >= ITEM_MIN_PLATFORM_GAP) {
         if (Math.random() < spawnChance) {
           const itemType = pickWeightedItem();
           const itemDef = ITEM_DEFINITIONS.find(d => d.type === itemType)!;
+          const itemY = newY - 20;
           this.items.push({
             x: newX + platWidth / 2,
-            y: newY - 20,
+            y: itemY,
             type: itemDef.type,
             collected: false,
-            platformIndex: platIndex,
+            ...(platform.moveSpeed ? { linkedPlatform: platform, offsetX: 0, offsetY: itemY - platform.y } : {}),
           });
           this.platformsSinceLastItem = 0;
         }
