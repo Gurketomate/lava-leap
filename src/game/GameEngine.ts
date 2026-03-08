@@ -141,8 +141,8 @@ export class GameEngine {
   // Double jump visual timer
   doubleJumpFlashTimer = 0;
 
-  // Last stable platform the player landed on (for revive)
-  lastLandedPlatform: { x: number; y: number; width: number } | null = null;
+  // Last stable platform the player landed on (for revive) — direct reference
+  lastLandedPlatformRef: Platform | null = null;
 
   // Revive grace state
   reviveGraceTimer = 0;
