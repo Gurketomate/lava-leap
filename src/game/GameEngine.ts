@@ -73,6 +73,7 @@ export class GameEngine {
   platforms: Platform[] = [];
   coins: Coin[] = [];
   particles: Particle[] = [];
+  lavaEmbers: { x: number; y: number; vx: number; vy: number; size: number; opacity: number; life: number; maxLife: number }[] = [];
   items: ItemPickup[] = [];
   platformsSinceLastItem = 0;
   activeEffects: ActiveEffect[] = [];
