@@ -25,89 +25,9 @@ const MainMenu = ({ onStart, onShop, onSettings }: MainMenuProps) => {
     }
   }, []);
 
-  // Ember particle system
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d')!;
-
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    const spawnEmber = (): Ember => ({
-      x: Math.random() * canvas.width,
-      y: canvas.height + 10,
-      vx: (Math.random() - 0.5) * 30,
-      vy: -(30 + Math.random() * 60),
-      size: 1.5 + Math.random() * 3,
-      opacity: 0.4 + Math.random() * 0.6,
-      life: 3 + Math.random() * 4,
-      maxLife: 7,
-    });
-
-    // Seed initial embers
-    for (let i = 0; i < 25; i++) {
-      const e = spawnEmber();
-      e.y = Math.random() * canvas.height;
-      embersRef.current.push(e);
-    }
-
-    let lastTime = performance.now();
-    const loop = (time: number) => {
-      const dt = Math.min((time - lastTime) / 1000, 0.05);
-      lastTime = time;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Spawn new embers
-      if (Math.random() < 0.3) {
-        embersRef.current.push(spawnEmber());
-      }
-
-      // Update & render embers
-      embersRef.current = embersRef.current.filter(e => {
-        e.x += e.vx * dt;
-        e.y += e.vy * dt;
-        e.vx += (Math.random() - 0.5) * 20 * dt;
-        e.life -= dt;
-
-        const alpha = Math.min(1, e.life / (e.maxLife * 0.3)) * e.opacity;
-        if (alpha <= 0) return false;
-
-        // Glow
-        const grad = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.size * 3);
-        grad.addColorStop(0, `rgba(255, 120, 20, ${alpha * 0.4})`);
-        grad.addColorStop(1, 'rgba(255, 60, 0, 0)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(e.x - e.size * 3, e.y - e.size * 3, e.size * 6, e.size * 6);
-
-        // Core
-        ctx.fillStyle = `rgba(255, ${150 + Math.random() * 80}, 30, ${alpha})`;
-        ctx.beginPath();
-        ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2);
-        ctx.fill();
-
-        return true;
-      });
-
-      animRef.current = requestAnimationFrame(loop);
-    };
-    animRef.current = requestAnimationFrame(loop);
-
-    return () => {
-      cancelAnimationFrame(animRef.current);
-      window.removeEventListener('resize', resize);
-    };
-  }, []);
-
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm">
-      {/* Ember particle canvas */}
-      <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-0" />
+      <EmberBackground />
 
       {/* Top buttons */}
       <div className="absolute top-4 right-4 flex gap-2 z-10">
