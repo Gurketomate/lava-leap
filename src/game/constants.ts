@@ -105,7 +105,7 @@ export const LEVELS: LevelDefinition[] = (() => {
   const levels: LevelDefinition[] = [];
 
   for (let id = 1; id <= 50; id++) {
-    const t = (id - 1) / 49; // 0..1 across all levels
+    const t = (id - 1) / 49;
     const peak = id % 5 === 0;
 
     let name: string;
@@ -113,35 +113,27 @@ export const LEVELS: LevelDefinition[] = (() => {
     let normalChance: number;
     let breakableChance: number;
     let movingChance: number;
-    let boostChance: number;
     let rewardChance: number;
     let platformWidthMod: number;
     let lavaSpeedMod: number;
     let lavaEndAccel: number;
     let lavaControlChance: number;
     let dangerChance: number;
-    let invincibleChance: number;
-    let vanishingChance: number;
 
     if (id <= 5) {
-      // INTRO tier — gentle introduction
       const lt = (id - 1) / 4;
       name = ['First Steps', 'Getting Started', 'The Ascent', 'Light Breeze', 'Summit View'][id - 1];
       targetHeight = Math.floor(lerp(300, 450, lt));
       normalChance = lerp(0.89, 0.74, lt);
       breakableChance = lerp(0.01, 0.05, lt);
       movingChance = lerp(0.02, 0.10, lt);
-      boostChance = lerp(0.08, 0.08, lt);
       rewardChance = lerp(0.00, 0.01, lt);
       platformWidthMod = lerp(1.25, 1.10, lt);
       lavaSpeedMod = lerp(0.70, 0.85, lt);
       lavaEndAccel = lerp(1.1, 1.2, lt);
       lavaControlChance = lerp(0.00, 0.03, lt);
       dangerChance = 0;
-      invincibleChance = 0;
-      vanishingChance = 0;
     } else if (id <= 15) {
-      // MID tier — introduce hazards, keep levels short
       const lt = (id - 6) / 9;
       const midNames = ['Shaky Paths', 'Brittle Ground', 'Fire Dance', 'Narrow Ridges', 'Lava Stream',
         'Ash Rain', 'Ember Trail', 'Rockfall', 'Heat Wave', 'Magma Core'];
@@ -150,17 +142,13 @@ export const LEVELS: LevelDefinition[] = (() => {
       normalChance = lerp(0.64, 0.41, lt);
       breakableChance = lerp(0.08, 0.18, lt);
       movingChance = lerp(0.14, 0.24, lt);
-      boostChance = 0.08;
       rewardChance = lerp(0.02, 0.05, lt);
       platformWidthMod = lerp(1.05, 0.88, lt);
       lavaSpeedMod = lerp(0.90, 1.25, lt);
       lavaEndAccel = lerp(1.2, 1.45, lt);
       lavaControlChance = lerp(0.03, 0.05, lt);
       dangerChance = lerp(0.00, 0.06, lt);
-      invincibleChance = lerp(0.00, 0.02, lt);
-      vanishingChance = lerp(0.02, 0.06, lt);
     } else if (id <= 30) {
-      // HARD tier — mechanical complexity ramps up
       const lt = (id - 16) / 14;
       const hardNames = ['Death Crater', 'Volcano Peak', 'Obsidian Bridge', 'Flame Gate', 'Crater Edge',
         'Shadow Fire', 'Lava Fountain', 'Ember Rain', 'Smelter', 'Trial by Fire',
@@ -170,33 +158,25 @@ export const LEVELS: LevelDefinition[] = (() => {
       normalChance = lerp(0.30, 0.12, lt);
       breakableChance = lerp(0.20, 0.28, lt);
       movingChance = lerp(0.26, 0.34, lt);
-      boostChance = lerp(0.08, 0.06, lt);
       rewardChance = lerp(0.05, 0.07, lt);
       platformWidthMod = lerp(0.82, 0.65, lt);
       lavaSpeedMod = lerp(1.30, 2.00, lt);
       lavaEndAccel = lerp(1.50, 2.00, lt);
       lavaControlChance = lerp(0.04, 0.06, lt);
       dangerChance = lerp(0.08, 0.16, lt);
-      invincibleChance = lerp(0.02, 0.03, lt);
-      vanishingChance = lerp(0.08, 0.16, lt);
     } else if (id === 50) {
-      // FINAL LEVEL — combination of all mechanics, true final challenge
       name = 'Eruption';
       targetHeight = 700;
       normalChance = 0.00;
       breakableChance = 0.24;
       movingChance = 0.30;
-      boostChance = 0.06;
       rewardChance = 0.08;
       platformWidthMod = 0.55;
       lavaSpeedMod = 3.20;
       lavaEndAccel = 3.50;
       lavaControlChance = 0.08;
       dangerChance = 0.20;
-      invincibleChance = 0.04;
-      vanishingChance = 0.18;
     } else {
-      // ELITE tier (31-49) — punishing mechanics, relentless pressure
       const lt = (id - 31) / 18;
       const eliteNames = ['Ash Crown', 'Ember Peak', 'Lava Falls', 'Fire Core', 'Crucible',
         'Obsidian Storm', 'Magma Flood', 'Crater Lake', 'Volcano Fist', 'Flame Grave',
@@ -207,18 +187,14 @@ export const LEVELS: LevelDefinition[] = (() => {
       normalChance = lerp(0.07, 0.02, lt);
       breakableChance = lerp(0.24, 0.28, lt);
       movingChance = lerp(0.34, 0.36, lt);
-      boostChance = lerp(0.06, 0.04, lt);
       rewardChance = lerp(0.07, 0.08, lt);
       platformWidthMod = lerp(0.65, 0.55, lt);
       lavaSpeedMod = lerp(2.00, 3.00, lt);
       lavaEndAccel = lerp(2.00, 3.20, lt);
       lavaControlChance = lerp(0.06, 0.08, lt);
       dangerChance = lerp(0.14, 0.18, lt);
-      invincibleChance = lerp(0.03, 0.04, lt);
-      vanishingChance = lerp(0.14, 0.18, lt);
     }
 
-    // Mini-peak every 5th level — harder mechanics, NOT longer
     if (peak) {
       lavaSpeedMod *= 1.10;
       platformWidthMod *= 0.93;
@@ -228,9 +204,9 @@ export const LEVELS: LevelDefinition[] = (() => {
 
     levels.push({
       id, name, targetHeight,
-      normalChance, breakableChance, movingChance, boostChance, rewardChance,
+      normalChance, breakableChance, movingChance, rewardChance,
       platformWidthMod, lavaSpeedMod, lavaEndAccel,
-      lavaControlChance, dangerChance, invincibleChance, vanishingChance,
+      lavaControlChance, dangerChance,
     });
   }
 
