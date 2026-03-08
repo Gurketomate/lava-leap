@@ -1002,6 +1002,15 @@ export class GameEngine {
       return;
     }
 
+    // Update platform-linked coins (move with platform)
+    for (const coin of this.coins) {
+      if (coin.collected || coin.platformIndex == null) continue;
+      const plat = this.platforms[coin.platformIndex];
+      if (!plat) continue;
+      coin.x = plat.x + plat.width / 2 + (coin.offsetX ?? 0);
+      coin.y = plat.y + (coin.offsetY ?? -25);
+    }
+
     // Coin collection
     for (const coin of this.coins) {
       if (coin.collected) continue;
