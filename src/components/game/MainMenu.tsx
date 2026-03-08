@@ -52,10 +52,10 @@ const MainMenu = ({ onStart, onShop, onSettings }: MainMenuProps) => {
         {/* Title */}
         <div className="text-center">
           <h1 className="text-5xl md:text-7xl font-display font-black text-primary text-glow-primary tracking-tight">
-            VOLCANO
+            LAVA
           </h1>
           <h2 className="text-3xl md:text-5xl font-display font-bold text-foreground -mt-2 tracking-widest">
-            ESCAPE
+            LEAP
           </h2>
           <p className="text-muted-foreground font-body mt-2 text-sm tracking-wider">
             Jump. Collect. Survive.
