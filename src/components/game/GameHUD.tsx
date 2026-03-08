@@ -36,19 +36,34 @@ const GameHUD = ({ activeEffects = [] }: GameHUDProps) => {
       {/* Score + Level */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2">
         <div className="glass-panel px-6 py-2 text-center">
-          <p className="text-xs text-muted-foreground font-body uppercase tracking-widest">
-            Level {currentLevel} — {levelDef?.name}
-          </p>
-          <p className="text-2xl font-display font-bold text-foreground">{score}<span className="text-sm text-muted-foreground">/{levelDef?.targetHeight}</span></p>
-          <div className="w-full h-1.5 bg-muted rounded-full mt-1 overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-300"
-              style={{
-                width: `${progress * 100}%`,
-                background: 'linear-gradient(90deg, hsl(var(--accent)), hsl(var(--primary)))',
-              }}
-            />
-          </div>
+          {isEndless ? (
+            <>
+              <p className="text-xs text-muted-foreground font-body uppercase tracking-widest">
+                Endless Mode
+              </p>
+              <p className="text-2xl font-display font-bold text-foreground">{score}
+                {endlessHighScore > 0 && (
+                  <span className="text-sm text-muted-foreground"> / best {endlessHighScore}</span>
+                )}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground font-body uppercase tracking-widest">
+                Level {currentLevel} — {levelDef?.name}
+              </p>
+              <p className="text-2xl font-display font-bold text-foreground">{score}<span className="text-sm text-muted-foreground">/{levelDef?.targetHeight}</span></p>
+              <div className="w-full h-1.5 bg-muted rounded-full mt-1 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${progress * 100}%`,
+                    background: 'linear-gradient(90deg, hsl(var(--accent)), hsl(var(--primary)))',
+                  }}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
