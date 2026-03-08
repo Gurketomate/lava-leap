@@ -1031,8 +1031,8 @@ export class GameEngine {
     this.score = Math.floor(heightReached / SCORE_SCALE);
     this.onScoreUpdate(this.score);
 
-    // Level complete
-    if (this.currentLevelDef && this.score >= this.currentLevelDef.targetHeight && !this.levelComplete) {
+    // Level complete (only in level mode)
+    if (!this.isEndless && this.currentLevelDef && this.score >= this.currentLevelDef.targetHeight && !this.levelComplete) {
       this.levelComplete = true;
       this.levelCompleteTimer = 0;
       this.lavaY = this.lavaY + 200;
