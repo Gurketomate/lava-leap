@@ -73,7 +73,7 @@ const Index = () => {
       const collected = engine.coinCount;
       const coinPercent = totalSpawned > 0 ? collected / totalSpawned : 0;
       const gs = useGameStore.getState();
-      gs.setRunStats(engine.runDeaths, coinPercent);
+      gs.setRunStats(engine.runDeaths, coinPercent, totalSpawned);
       gs.completeLevel();
     };
     engine.onActiveEffectsUpdate = (effects: ActiveEffect[]) => {

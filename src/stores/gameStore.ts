@@ -26,6 +26,7 @@ interface GameStore {
   // Star tracking per run
   runDeaths: number;
   runCoinPercent: number;
+  runTotalCoinsSpawned: number;
   lastRunStars: number;
   levelStars: LevelStars;
 
@@ -36,7 +37,7 @@ interface GameStore {
   setPhase: (phase: number) => void;
   setScreenShake: (shake: number) => void;
   setCurrentLevel: (level: number) => void;
-  setRunStats: (deaths: number, coinPercent: number) => void;
+  setRunStats: (deaths: number, coinPercent: number, totalSpawned: number) => void;
   completeLevel: () => void;
   gameOver: () => void;
   resetRun: () => void;
@@ -80,6 +81,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   maxUnlockedLevel: 1,
   runDeaths: 0,
   runCoinPercent: 0,
+  runTotalCoinsSpawned: 0,
   lastRunStars: 0,
   levelStars: {},
 
@@ -91,7 +93,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setScreenShake: (screenShake) => set({ screenShake }),
   setCurrentLevel: (currentLevel) => set({ currentLevel }),
 
-  setRunStats: (deaths, coinPercent) => set({ runDeaths: deaths, runCoinPercent: coinPercent }),
+  setRunStats: (deaths, coinPercent, totalSpawned) => set({ runDeaths: deaths, runCoinPercent: coinPercent, runTotalCoinsSpawned: totalSpawned }),
 
   completeLevel: () => {
     const s = get();
@@ -140,6 +142,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     screenShake: 0,
     runDeaths: 0,
     runCoinPercent: 0,
+    runTotalCoinsSpawned: 0,
     lastRunStars: 0,
   }),
 
