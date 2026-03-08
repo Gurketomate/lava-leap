@@ -73,6 +73,7 @@ export class GameEngine {
   platforms: Platform[] = [];
   coins: Coin[] = [];
   particles: Particle[] = [];
+  lavaEmbers: { x: number; y: number; vx: number; vy: number; size: number; opacity: number; life: number; maxLife: number }[] = [];
   items: ItemPickup[] = [];
   platformsSinceLastItem = 0;
   activeEffects: ActiveEffect[] = [];
@@ -1096,6 +1097,32 @@ export class GameEngine {
       return part.life > 0;
     });
 
+    // Lava embers — subtle ambient particles rising from lava
+    if (this.lavaEmbers.length < 6 && Math.random() < 0.15) {
+      const emX = Math.random() * this.width;
+      const emLife = 1.5 + Math.random() * 2;
+      this.lavaEmbers.push({
+        x: emX,
+        y: this.lavaY - 5 - Math.random() * 10,
+        vx: (Math.random() - 0.5) * 15,
+        vy: -(20 + Math.random() * 30),
+        size: 1 + Math.random() * 2,
+        opacity: 0.3 + Math.random() * 0.4,
+        life: emLife,
+        maxLife: emLife,
+      });
+    }
+    this.lavaEmbers = this.lavaEmbers.filter(e => {
+      e.x += e.vx * dt;
+      e.y += e.vy * dt;
+      e.vx += (Math.random() - 0.5) * 10 * dt;
+      e.life -= dt;
+      // Fade out in upper portion — only visible in lower 40% of screen
+      const screenY = e.y - this.cameraY;
+      if (screenY < this.height * 0.6) e.life = 0;
+      return e.life > 0;
+    });
+
     this.generatePlatformsUpTo(this.cameraY - PLATFORMS_BUFFER);
 
     // Cleanup
@@ -1265,6 +1292,21 @@ export class GameEngine {
       ctx.fill();
     }
     ctx.globalAlpha = 1;
+
+    // Lava embers (rendered in world space, just above lava)
+    for (const e of this.lavaEmbers) {
+      const alpha = Math.min(1, e.life / (e.maxLife * 0.3)) * e.opacity;
+      if (alpha <= 0) continue;
+      const grad = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.size * 3);
+      grad.addColorStop(0, `rgba(255, 120, 20, ${alpha * 0.35})`);
+      grad.addColorStop(1, 'rgba(255, 60, 0, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(e.x - e.size * 3, e.y - e.size * 3, e.size * 6, e.size * 6);
+      ctx.fillStyle = `rgba(255, ${150 + Math.random() * 60 | 0}, 30, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     this.renderLava(ctx);
     ctx.restore();
