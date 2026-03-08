@@ -204,11 +204,11 @@ export const LEVELS: LevelDefinition[] = (() => {
         'Ash Ghost', 'Volcano Fury', 'Fire Soul', 'Ember Crown'];
       name = eliteNames[id - 31];
       targetHeight = Math.floor(lerp(650, 700, lt));
-      normalChance = lerp(0.05, 0.00, lt);
+      normalChance = lerp(0.07, 0.02, lt);
       breakableChance = lerp(0.24, 0.28, lt);
       movingChance = lerp(0.34, 0.36, lt);
       boostChance = lerp(0.06, 0.04, lt);
-      rewardChance = lerp(0.10, 0.12, lt);
+      rewardChance = lerp(0.07, 0.08, lt);
       platformWidthMod = lerp(0.65, 0.55, lt);
       lavaSpeedMod = lerp(2.00, 3.00, lt);
       lavaEndAccel = lerp(2.00, 3.20, lt);
