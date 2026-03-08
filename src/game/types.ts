@@ -36,8 +36,8 @@ export interface Coin {
   radius: number;
   collected: boolean;
   angle: number;
-  platformIndex?: number; // linked platform for moving coins
-  offsetX?: number; // offset from platform center
+  linkedPlatform?: Platform; // direct reference for moving platforms
+  offsetX?: number;
   offsetY?: number;
 }
 
@@ -69,7 +69,9 @@ export interface ItemPickup {
   y: number;
   type: ItemType;
   collected: boolean;
-  platformIndex: number; // link to platform
+  linkedPlatform?: Platform; // direct reference for moving platforms
+  offsetX?: number;
+  offsetY?: number;
 }
 
 export interface ActiveEffect {
