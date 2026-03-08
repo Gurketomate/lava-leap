@@ -531,11 +531,12 @@ export class GameEngine {
 
   generatePlatformsUpTo(targetY: number) {
     const lastPlatform = this.platforms.length > 0 ? this.platforms[this.platforms.length - 1] : null;
-    const widthMod = this.currentLevelDef?.platformWidthMod ?? 1;
+    const endlessDiff = this.isEndless ? this.getEndlessDifficulty() : null;
+    const widthMod = endlessDiff ? endlessDiff.platformWidthMod : (this.currentLevelDef?.platformWidthMod ?? 1);
     const levelId = this.currentLevelDef?.id ?? 1;
 
     while (this.highestPlatformY > targetY) {
-      const gapScale = getGapScale(levelId);
+      const gapScale = this.isEndless ? (endlessDiff?.gapScale ?? 1.0) : getGapScale(levelId);
       const scaledGapMax = PLATFORM_GAP_MIN + (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN) * gapScale;
       const gap = PLATFORM_GAP_MIN + Math.random() * (scaledGapMax - PLATFORM_GAP_MIN);
       const newY = this.highestPlatformY - gap;
