@@ -643,6 +643,7 @@ export class GameEngine {
             collected: false,
             angle: 0,
           });
+          this.totalCoinsSpawned++;
         }
       }
 
