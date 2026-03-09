@@ -667,14 +667,13 @@ export class GameEngine {
         });
 
         for (let sc = 0; sc < 2; sc++) {
-          this.coins.push({
+          this.registerCoinSpawn({
             x: safeX + safeWidth / 2 + (sc - 0.5) * 18,
             y: safeY - 25,
             radius: COIN_RADIUS,
             collected: false,
             angle: 0,
           });
-          this.totalCoinsSpawned++;
         }
       }
 
@@ -705,8 +704,7 @@ export class GameEngine {
             angle: 0,
             ...(isMoving ? { linkedPlatform: platform, offsetX: 0, offsetY: coinY - platform.y } : {}),
           };
-          this.coins.push(coin);
-          this.totalCoinsSpawned++;
+          this.registerCoinSpawn(coin);
         } else {
           const maxSpread = Math.min(actualWidth * 0.8, coinCount * 14);
           const spacing = maxSpread / Math.max(coinCount - 1, 1);
@@ -719,7 +717,7 @@ export class GameEngine {
               const arcHeight = 14 * (1 - t * t);
               const offsetX = t * halfCount * spacing;
               const coinY = platform.y - 22 - arcHeight;
-              this.coins.push({
+              this.registerCoinSpawn({
                 x: platCenterX + offsetX,
                 y: coinY,
                 radius: COIN_RADIUS,
@@ -727,12 +725,11 @@ export class GameEngine {
                 angle: 0,
                 ...(isMoving ? { linkedPlatform: platform, offsetX, offsetY: coinY - platform.y } : {}),
               });
-              this.totalCoinsSpawned++;
             }
           } else {
             for (let c = 0; c < coinCount; c++) {
               const coinY = platform.y - 22 - c * 13;
-              this.coins.push({
+              this.registerCoinSpawn({
                 x: platCenterX,
                 y: coinY,
                 radius: COIN_RADIUS,
@@ -740,7 +737,6 @@ export class GameEngine {
                 angle: 0,
                 ...(isMoving ? { linkedPlatform: platform, offsetX: 0, offsetY: coinY - platform.y } : {}),
               });
-              this.totalCoinsSpawned++;
             }
           }
         }
