@@ -644,7 +644,6 @@ export class GameEngine {
             angle: 0,
           });
         }
-        this.totalCoinsSpawned += 2;
       }
 
       // Golden shield platform visual width boost
@@ -659,7 +658,6 @@ export class GameEngine {
       const coinChance = type === 'reward' ? 1.0 : COIN_SPAWN_CHANCE + this.coinSpawnBonus;
       if (Math.random() < coinChance) {
         const coinCount = type === 'reward' ? rewardCoins : 1;
-        this.totalCoinsSpawned += coinCount;
 
         const actualWidth = platform.width;
         const platCenterX = platform.x + actualWidth / 2;
@@ -747,6 +745,10 @@ export class GameEngine {
       this.cameraY += (targetCameraY - this.cameraY) * 0.03;
       if (this.levelCompleteTimer > 1.5) {
         this.running = false;
+        // Compute real coin totals: collected + still-alive uncollected = total reachable
+        const uncollectedAlive = this.coins.filter(c => !c.collected).length;
+        this.totalCoinsSpawned = this.coinCount + uncollectedAlive;
+        console.log(`[CoinDebug] Level complete — collected: ${this.coinCount}, uncollected alive: ${uncollectedAlive}, totalCoins: ${this.totalCoinsSpawned}`);
         this.onLevelComplete({ score: this.score, coins: this.coinCount });
       }
       return;
@@ -1128,15 +1130,7 @@ export class GameEngine {
 
     // Cleanup
     this.platforms = this.platforms.filter((pl) => pl.y < this.lavaY + 100);
-    this.coins = this.coins.filter((c) => {
-      if (c.collected) return false;
-      if (c.y >= this.lavaY + 100) {
-        // Coin consumed by lava — don't count as missed
-        this.totalCoinsSpawned = Math.max(0, this.totalCoinsSpawned - 1);
-        return false;
-      }
-      return true;
-    });
+    this.coins = this.coins.filter((c) => !c.collected && c.y < this.lavaY + 100);
     this.items = this.items.filter((i) => !i.collected && i.y < this.lavaY + 100);
 
     // Check if any shield is active
@@ -1159,6 +1153,10 @@ export class GameEngine {
         stopMusic();
         stopLavaSound();
         playDeath();
+        // Compute real coin totals at game over too
+        const uncollectedAlive = this.coins.filter(c => !c.collected).length;
+        this.totalCoinsSpawned = this.coinCount + uncollectedAlive;
+        console.log(`[CoinDebug] Game over (lava) — collected: ${this.coinCount}, uncollected alive: ${uncollectedAlive}, totalCoins: ${this.totalCoinsSpawned}`);
         this.onGameOver({ score: this.score, coins: this.coinCount });
         return;
       }
@@ -1176,6 +1174,9 @@ export class GameEngine {
         stopMusic();
         stopLavaSound();
         playDeath();
+        const uncollectedAlive2 = this.coins.filter(c => !c.collected).length;
+        this.totalCoinsSpawned = this.coinCount + uncollectedAlive2;
+        console.log(`[CoinDebug] Game over (fall) — collected: ${this.coinCount}, uncollected alive: ${uncollectedAlive2}, totalCoins: ${this.totalCoinsSpawned}`);
         this.onGameOver({ score: this.score, coins: this.coinCount });
         return;
       }
