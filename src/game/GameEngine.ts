@@ -1150,20 +1150,12 @@ export class GameEngine {
       return e.life > 0;
     });
 
-    this.generatePlatformsUpTo(this.cameraY - PLATFORMS_BUFFER);
+    if (this.isEndless) {
+      this.generatePlatformsUpTo(this.cameraY - PLATFORMS_BUFFER);
+    }
 
     // Cleanup
     this.platforms = this.platforms.filter((pl) => pl.y < this.lavaY + 100);
-
-    const uncollectedCoinsLostToLava = this.coins.reduce((count, coin) => {
-      if (!coin.collected && coin.y >= this.lavaY + 100) return count + 1;
-      return count;
-    }, 0);
-
-    if (uncollectedCoinsLostToLava > 0) {
-      this.totalCoinsSpawned = Math.max(this.coinCount, this.totalCoinsSpawned - uncollectedCoinsLostToLava);
-    }
-
     this.coins = this.coins.filter((c) => !c.collected && c.y < this.lavaY + 100);
     this.items = this.items.filter((i) => !i.collected && i.y < this.lavaY + 100);
 
