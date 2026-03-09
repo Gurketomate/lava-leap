@@ -553,6 +553,29 @@ export class GameEngine {
     }
   }
 
+  private registerCoinSpawn(coin: Coin) {
+    this.coins.push(coin);
+    if (!this.levelCoinsFrozen) {
+      this.totalCoinsSpawned++;
+    }
+  }
+
+  private freezeLevelCoinRegistration() {
+    this.totalCoinsSpawned = this.coins.filter((coin) => !coin.collected).length;
+    this.levelCoinsFrozen = true;
+    console.log(`[CoinDebug] Level ${this.currentLevelDef?.id ?? '?'} start — final spawned coins: ${this.totalCoinsSpawned}`);
+  }
+
+  private collectCoin(coin: Coin) {
+    if (coin.collected) return;
+    coin.collected = true;
+    this.coinCount++;
+    this.onCoinCollect(this.coinCount);
+    console.log(`[CoinDebug] collectedCoins update — ${this.coinCount}/${this.totalCoinsSpawned}`);
+    this.spawnParticles(coin.x, coin.y, '#ffd700', 5);
+    playCoin();
+  }
+
   generatePlatformsUpTo(targetY: number) {
     const lastPlatform = this.platforms.length > 0 ? this.platforms[this.platforms.length - 1] : null;
     const endlessDiff = this.isEndless ? this.getEndlessDifficulty() : null;
