@@ -1154,10 +1154,7 @@ export class GameEngine {
         stopMusic();
         stopLavaSound();
         playDeath();
-        // Compute real coin totals at game over too
-        const uncollectedAlive = this.coins.filter(c => !c.collected).length;
-        this.totalCoinsSpawned = this.coinCount + uncollectedAlive;
-        console.log(`[CoinDebug] Game over (lava) — collected: ${this.coinCount}, uncollected alive: ${uncollectedAlive}, totalCoins: ${this.totalCoinsSpawned}`);
+        console.log(`[CoinDebug] Game over (lava) — collected: ${this.coinCount}, totalSpawned: ${this.totalCoinsSpawned}`);
         this.onGameOver({ score: this.score, coins: this.coinCount });
         return;
       }
