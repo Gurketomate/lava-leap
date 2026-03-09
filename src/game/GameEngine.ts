@@ -675,6 +675,7 @@ export class GameEngine {
             ...(isMoving ? { linkedPlatform: platform, offsetX: 0, offsetY: coinY - platform.y } : {}),
           };
           this.coins.push(coin);
+          this.totalCoinsSpawned++;
         } else {
           const maxSpread = Math.min(actualWidth * 0.8, coinCount * 14);
           const spacing = maxSpread / Math.max(coinCount - 1, 1);
@@ -695,6 +696,7 @@ export class GameEngine {
                 angle: 0,
                 ...(isMoving ? { linkedPlatform: platform, offsetX, offsetY: coinY - platform.y } : {}),
               });
+              this.totalCoinsSpawned++;
             }
           } else {
             for (let c = 0; c < coinCount; c++) {
@@ -707,6 +709,7 @@ export class GameEngine {
                 angle: 0,
                 ...(isMoving ? { linkedPlatform: platform, offsetX: 0, offsetY: coinY - platform.y } : {}),
               });
+              this.totalCoinsSpawned++;
             }
           }
         }
