@@ -749,10 +749,7 @@ export class GameEngine {
       this.cameraY += (targetCameraY - this.cameraY) * 0.03;
       if (this.levelCompleteTimer > 1.5) {
         this.running = false;
-        // Compute real coin totals: collected + still-alive uncollected = total reachable
-        const uncollectedAlive = this.coins.filter(c => !c.collected).length;
-        this.totalCoinsSpawned = this.coinCount + uncollectedAlive;
-        console.log(`[CoinDebug] Level complete — collected: ${this.coinCount}, uncollected alive: ${uncollectedAlive}, totalCoins: ${this.totalCoinsSpawned}`);
+        console.log(`[CoinDebug] Level complete — collected: ${this.coinCount}, totalSpawned: ${this.totalCoinsSpawned}`);
         this.onLevelComplete({ score: this.score, coins: this.coinCount });
       }
       return;
