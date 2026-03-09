@@ -83,6 +83,7 @@ export class GameEngine {
   score = 0;
   coinCount = 0;
   totalCoinsSpawned = 0;
+  levelCoinsFrozen = false;
   runDeaths = 0;
   maxHeight = 0;
   startY = 0;
@@ -360,6 +361,7 @@ export class GameEngine {
     this.lastPlatformType = 'normal';
     this.levelComplete = false;
     this.levelCompleteTimer = 0;
+    this.levelCoinsFrozen = false;
 
     const startPlatform: Platform = {
       x: this.width / 2 - PLATFORM_WIDTH / 2,
@@ -372,7 +374,13 @@ export class GameEngine {
     this.platforms.push(startPlatform);
     this.highestPlatformY = startPlatform.y;
 
-    this.generatePlatformsUpTo(this.cameraY - PLATFORMS_BUFFER);
+    if (!this.isEndless && this.currentLevelDef) {
+      const levelTopY = this.startY - (this.currentLevelDef.targetHeight * SCORE_SCALE) - PLATFORMS_BUFFER;
+      this.generatePlatformsUpTo(levelTopY);
+      this.freezeLevelCoinRegistration();
+    } else {
+      this.generatePlatformsUpTo(this.cameraY - PLATFORMS_BUFFER);
+    }
   }
 
   start() {
@@ -545,6 +553,29 @@ export class GameEngine {
     }
   }
 
+  private registerCoinSpawn(coin: Coin) {
+    this.coins.push(coin);
+    if (!this.levelCoinsFrozen) {
+      this.totalCoinsSpawned++;
+    }
+  }
+
+  private freezeLevelCoinRegistration() {
+    this.totalCoinsSpawned = this.coins.filter((coin) => !coin.collected).length;
+    this.levelCoinsFrozen = true;
+    console.log(`[CoinDebug] Level ${this.currentLevelDef?.id ?? '?'} start — final spawned coins: ${this.totalCoinsSpawned}`);
+  }
+
+  private collectCoin(coin: Coin) {
+    if (coin.collected) return;
+    coin.collected = true;
+    this.coinCount++;
+    this.onCoinCollect(this.coinCount);
+    console.log(`[CoinDebug] collectedCoins update — ${this.coinCount}/${this.totalCoinsSpawned}`);
+    this.spawnParticles(coin.x, coin.y, '#ffd700', 5);
+    playCoin();
+  }
+
   generatePlatformsUpTo(targetY: number) {
     const lastPlatform = this.platforms.length > 0 ? this.platforms[this.platforms.length - 1] : null;
     const endlessDiff = this.isEndless ? this.getEndlessDifficulty() : null;
@@ -636,14 +667,13 @@ export class GameEngine {
         });
 
         for (let sc = 0; sc < 2; sc++) {
-          this.coins.push({
+          this.registerCoinSpawn({
             x: safeX + safeWidth / 2 + (sc - 0.5) * 18,
             y: safeY - 25,
             radius: COIN_RADIUS,
             collected: false,
             angle: 0,
           });
-          this.totalCoinsSpawned++;
         }
       }
 
@@ -674,8 +704,7 @@ export class GameEngine {
             angle: 0,
             ...(isMoving ? { linkedPlatform: platform, offsetX: 0, offsetY: coinY - platform.y } : {}),
           };
-          this.coins.push(coin);
-          this.totalCoinsSpawned++;
+          this.registerCoinSpawn(coin);
         } else {
           const maxSpread = Math.min(actualWidth * 0.8, coinCount * 14);
           const spacing = maxSpread / Math.max(coinCount - 1, 1);
@@ -688,7 +717,7 @@ export class GameEngine {
               const arcHeight = 14 * (1 - t * t);
               const offsetX = t * halfCount * spacing;
               const coinY = platform.y - 22 - arcHeight;
-              this.coins.push({
+              this.registerCoinSpawn({
                 x: platCenterX + offsetX,
                 y: coinY,
                 radius: COIN_RADIUS,
@@ -696,12 +725,11 @@ export class GameEngine {
                 angle: 0,
                 ...(isMoving ? { linkedPlatform: platform, offsetX, offsetY: coinY - platform.y } : {}),
               });
-              this.totalCoinsSpawned++;
             }
           } else {
             for (let c = 0; c < coinCount; c++) {
               const coinY = platform.y - 22 - c * 13;
-              this.coins.push({
+              this.registerCoinSpawn({
                 x: platCenterX,
                 y: coinY,
                 radius: COIN_RADIUS,
@@ -709,7 +737,6 @@ export class GameEngine {
                 angle: 0,
                 ...(isMoving ? { linkedPlatform: platform, offsetX: 0, offsetY: coinY - platform.y } : {}),
               });
-              this.totalCoinsSpawned++;
             }
           }
         }
@@ -1083,11 +1110,7 @@ export class GameEngine {
       }
 
       if (dist < coin.radius + 20) {
-        coin.collected = true;
-        this.coinCount++;
-        this.onCoinCollect(this.coinCount);
-        this.spawnParticles(coin.x, coin.y, '#ffd700', 5);
-        playCoin();
+        this.collectCoin(coin);
       }
       coin.angle += dt * 3;
     }
@@ -1127,20 +1150,12 @@ export class GameEngine {
       return e.life > 0;
     });
 
-    this.generatePlatformsUpTo(this.cameraY - PLATFORMS_BUFFER);
+    if (this.isEndless) {
+      this.generatePlatformsUpTo(this.cameraY - PLATFORMS_BUFFER);
+    }
 
     // Cleanup
     this.platforms = this.platforms.filter((pl) => pl.y < this.lavaY + 100);
-
-    const uncollectedCoinsLostToLava = this.coins.reduce((count, coin) => {
-      if (!coin.collected && coin.y >= this.lavaY + 100) return count + 1;
-      return count;
-    }, 0);
-
-    if (uncollectedCoinsLostToLava > 0) {
-      this.totalCoinsSpawned = Math.max(this.coinCount, this.totalCoinsSpawned - uncollectedCoinsLostToLava);
-    }
-
     this.coins = this.coins.filter((c) => !c.collected && c.y < this.lavaY + 100);
     this.items = this.items.filter((i) => !i.collected && i.y < this.lavaY + 100);
 
