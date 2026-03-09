@@ -644,6 +644,7 @@ export class GameEngine {
             angle: 0,
           });
         }
+        this.totalCoinsSpawned += 2;
       }
 
       // Golden shield platform visual width boost
@@ -1127,7 +1128,15 @@ export class GameEngine {
 
     // Cleanup
     this.platforms = this.platforms.filter((pl) => pl.y < this.lavaY + 100);
-    this.coins = this.coins.filter((c) => !c.collected && c.y < this.lavaY + 100);
+    this.coins = this.coins.filter((c) => {
+      if (c.collected) return false;
+      if (c.y >= this.lavaY + 100) {
+        // Coin consumed by lava — don't count as missed
+        this.totalCoinsSpawned = Math.max(0, this.totalCoinsSpawned - 1);
+        return false;
+      }
+      return true;
+    });
     this.items = this.items.filter((i) => !i.collected && i.y < this.lavaY + 100);
 
     // Check if any shield is active
