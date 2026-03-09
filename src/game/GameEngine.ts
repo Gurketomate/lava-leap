@@ -83,6 +83,7 @@ export class GameEngine {
   score = 0;
   coinCount = 0;
   totalCoinsSpawned = 0;
+  levelCoinsFrozen = false;
   runDeaths = 0;
   maxHeight = 0;
   startY = 0;
