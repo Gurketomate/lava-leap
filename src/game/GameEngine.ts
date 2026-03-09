@@ -1174,6 +1174,9 @@ export class GameEngine {
         stopMusic();
         stopLavaSound();
         playDeath();
+        const uncollectedAlive2 = this.coins.filter(c => !c.collected).length;
+        this.totalCoinsSpawned = this.coinCount + uncollectedAlive2;
+        console.log(`[CoinDebug] Game over (fall) — collected: ${this.coinCount}, uncollected alive: ${uncollectedAlive2}, totalCoins: ${this.totalCoinsSpawned}`);
         this.onGameOver({ score: this.score, coins: this.coinCount });
         return;
       }
