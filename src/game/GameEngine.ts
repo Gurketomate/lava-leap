@@ -644,7 +644,6 @@ export class GameEngine {
             angle: 0,
           });
         }
-        this.totalCoinsSpawned += 2;
       }
 
       // Golden shield platform visual width boost
