@@ -1110,11 +1110,7 @@ export class GameEngine {
       }
 
       if (dist < coin.radius + 20) {
-        coin.collected = true;
-        this.coinCount++;
-        this.onCoinCollect(this.coinCount);
-        this.spawnParticles(coin.x, coin.y, '#ffd700', 5);
-        playCoin();
+        this.collectCoin(coin);
       }
       coin.angle += dt * 3;
     }
