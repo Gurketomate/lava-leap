@@ -361,6 +361,7 @@ export class GameEngine {
     this.lastPlatformType = 'normal';
     this.levelComplete = false;
     this.levelCompleteTimer = 0;
+    this.levelCoinsFrozen = false;
 
     const startPlatform: Platform = {
       x: this.width / 2 - PLATFORM_WIDTH / 2,
@@ -373,7 +374,13 @@ export class GameEngine {
     this.platforms.push(startPlatform);
     this.highestPlatformY = startPlatform.y;
 
-    this.generatePlatformsUpTo(this.cameraY - PLATFORMS_BUFFER);
+    if (!this.isEndless && this.currentLevelDef) {
+      const levelTopY = this.startY - (this.currentLevelDef.targetHeight * SCORE_SCALE) - PLATFORMS_BUFFER;
+      this.generatePlatformsUpTo(levelTopY);
+      this.freezeLevelCoinRegistration();
+    } else {
+      this.generatePlatformsUpTo(this.cameraY - PLATFORMS_BUFFER);
+    }
   }
 
   start() {
