@@ -84,6 +84,8 @@ export class GameEngine {
   coinCount = 0;
   totalCoinsSpawned = 0;
   levelCoinsFrozen = false;
+  nextCoinId = 0;
+  collectedCoinIds = new Set<number>();
   runDeaths = 0;
   maxHeight = 0;
   startY = 0;
@@ -327,6 +329,8 @@ export class GameEngine {
     this.score = 0;
     this.coinCount = 0;
     this.totalCoinsSpawned = 0;
+    this.nextCoinId = 0;
+    this.collectedCoinIds = new Set<number>();
     this.runDeaths = 0;
     this.platforms = [];
     this.coins = [];
@@ -553,7 +557,8 @@ export class GameEngine {
     }
   }
 
-  private registerCoinSpawn(coin: Coin) {
+  private registerCoinSpawn(coinData: Omit<Coin, 'id'>) {
+    const coin: Coin = { ...coinData, id: this.nextCoinId++ };
     this.coins.push(coin);
     if (!this.levelCoinsFrozen) {
       this.totalCoinsSpawned++;
@@ -563,18 +568,26 @@ export class GameEngine {
   private freezeLevelCoinRegistration() {
     this.totalCoinsSpawned = this.coins.filter((coin) => !coin.collected).length;
     this.levelCoinsFrozen = true;
-    
   }
 
   private collectCoin(coin: Coin) {
+    // Strict single-collection: check both the coin flag AND our collected set
     if (coin.collected) return;
+    if (this.collectedCoinIds.has(coin.id)) return;
+    
     coin.collected = true;
-    this.coinCount++;
-    // Cap coinCount so it never exceeds coinTarget (level mode) or totalCoinsSpawned (endless)
-    const cap = this.currentLevelDef?.coinTarget ?? this.totalCoinsSpawned;
-    if (cap > 0) {
-      this.coinCount = Math.min(this.coinCount, cap);
+    this.collectedCoinIds.add(coin.id);
+    this.coinCount = this.collectedCoinIds.size;
+    
+    // Hard clamp: never exceed totalCoinsSpawned or coinTarget
+    const cap = Math.min(
+      this.totalCoinsSpawned,
+      this.currentLevelDef?.coinTarget ?? Infinity
+    );
+    if (cap > 0 && this.coinCount > cap) {
+      this.coinCount = cap;
     }
+    
     this.onCoinCollect(this.coinCount);
     this.spawnParticles(coin.x, coin.y, '#ffd700', 5);
     playCoin();
@@ -586,8 +599,9 @@ export class GameEngine {
     const widthMod = endlessDiff ? endlessDiff.platformWidthMod : (this.currentLevelDef?.platformWidthMod ?? 1);
     const levelId = this.currentLevelDef?.id ?? 1;
 
-    // Track alternation side for early levels (forces horizontal movement)
-    let lastSide: 'left' | 'right' | 'center' = 'center';
+    // Track recent platform positions for natural variation
+    let consecutiveSameSide = 0;
+    let lastZone: 'left' | 'center' | 'right' = 'center';
 
     while (this.highestPlatformY > targetY) {
       const gapScale = this.isEndless ? (endlessDiff?.gapScale ?? 1.0) : getGapScale(levelId);
@@ -601,7 +615,7 @@ export class GameEngine {
       // Check if this should be a rare golden shield platform
       let type: Platform['type'];
       if (this.shouldSpawnShieldPlatform() && !this.hasPermanentShield) {
-        type = 'invincible'; // invincible type = golden shield platform
+        type = 'invincible';
       } else {
         type = this.pickPlatformType();
         if (type === 'danger' && newY > this.lavaY - 200) {
@@ -615,48 +629,90 @@ export class GameEngine {
 
       const sourcePlat = lastPlatform || this.platforms[this.platforms.length - 1];
 
-      // Early levels (1-5): force horizontal alternation so the player can't just go straight up
-      if (!this.isEndless && levelId <= 5 && sourcePlat) {
-        const mid = this.width / 2;
+      if (sourcePlat) {
         const sourceCenter = sourcePlat.x + sourcePlat.width / 2;
-        const margin = platWidth * 0.6; // minimum horizontal offset from source
+        const thirdWidth = this.width / 3;
 
-        if (lastSide === 'center' || lastSide === 'right') {
-          // Place left
-          const maxX = Math.max(0, Math.min(sourceCenter - margin, this.width * 0.4));
-          newX = Math.random() * maxX;
-          lastSide = 'left';
+        // Determine which zone the source is in
+        const sourceZone: 'left' | 'center' | 'right' = 
+          sourceCenter < thirdWidth ? 'left' : sourceCenter > thirdWidth * 2 ? 'right' : 'center';
+
+        // Natural placement: bias AWAY from current zone after 2+ consecutive same-side
+        // but allow occasional same-side (unlike strict alternation)
+        let zones: ('left' | 'center' | 'right')[];
+        if (consecutiveSameSide >= 2) {
+          // Force a different zone
+          zones = (['left', 'center', 'right'] as const).filter(z => z !== sourceZone);
         } else {
-          // Place right
-          const minX = Math.min(this.width - platWidth, Math.max(sourceCenter + margin, this.width * 0.5));
-          newX = minX + Math.random() * (this.width - platWidth - minX);
-          lastSide = 'right';
+          // Weight towards different zones but allow same
+          const r = Math.random();
+          if (r < 0.15) {
+            zones = [sourceZone]; // 15% chance same zone
+          } else if (r < 0.55) {
+            zones = ['center']; // 40% chance center
+          } else {
+            zones = (['left', 'center', 'right'] as const).filter(z => z !== sourceZone);
+          }
         }
-        // Clamp and verify reachability
+
+        const targetZone = zones[Math.floor(Math.random() * zones.length)];
+
+        // Pick X within the target zone with some randomness
+        const margin = 10;
+        let minX: number, maxX: number;
+        if (targetZone === 'left') {
+          minX = margin;
+          maxX = Math.max(margin + platWidth, thirdWidth - platWidth / 2);
+        } else if (targetZone === 'right') {
+          minX = Math.min(this.width - margin - platWidth, thirdWidth * 2 - platWidth / 2);
+          maxX = this.width - margin - platWidth;
+        } else {
+          minX = thirdWidth * 0.5;
+          maxX = thirdWidth * 2.5 - platWidth;
+        }
+        minX = Math.max(0, minX);
+        maxX = Math.min(this.width - platWidth, Math.max(minX, maxX));
+        newX = minX + Math.random() * (maxX - minX);
+
+        // Ensure minimum horizontal offset from source (prevents vertical stacking)
+        const minHorizOffset = platWidth * 0.3;
+        const currentCenter = newX + platWidth / 2;
+        if (Math.abs(currentCenter - sourceCenter) < minHorizOffset && this.width > platWidth * 3) {
+          const dir = Math.random() > 0.5 ? 1 : -1;
+          newX = Math.max(0, Math.min(
+            this.width - platWidth,
+            sourceCenter + dir * (minHorizOffset + Math.random() * 40) - platWidth / 2
+          ));
+        }
+
+        // Verify reachability
         newX = Math.max(0, Math.min(this.width - platWidth, newX));
         if (!isPlatformReachable(sourcePlat.x, sourcePlat.width, sourcePlat.y, newX, platWidth, newY, this.reachability)) {
-          // Fallback: offset from source center
-          const dir = lastSide === 'left' ? -1 : 1;
-          newX = Math.max(0, Math.min(
-            this.width - platWidth,
-            sourceCenter + dir * (40 + Math.random() * 60) - platWidth / 2
-          ));
+          // Fallback: try random positions
+          let attempts = 0;
+          while (attempts < 20 && !isPlatformReachable(sourcePlat.x, sourcePlat.width, sourcePlat.y, newX, platWidth, newY, this.reachability)) {
+            newX = Math.random() * (this.width - platWidth);
+            attempts++;
+          }
+          if (attempts >= 20) {
+            // Last resort: near source
+            newX = Math.max(0, Math.min(
+              this.width - platWidth,
+              sourceCenter + (Math.random() - 0.5) * 60 - platWidth / 2
+            ));
+          }
         }
-      } else if (sourcePlat) {
-        let attempts = 0;
-        while (
-          attempts < 20 &&
-          !isPlatformReachable(sourcePlat.x, sourcePlat.width, sourcePlat.y, newX, platWidth, newY, this.reachability)
-        ) {
-          newX = Math.random() * (this.width - platWidth);
-          attempts++;
+
+        // Track zone for consecutive-same-side detection
+        const placedCenter = newX + platWidth / 2;
+        const placedZone: 'left' | 'center' | 'right' = 
+          placedCenter < thirdWidth ? 'left' : placedCenter > thirdWidth * 2 ? 'right' : 'center';
+        if (placedZone === lastZone) {
+          consecutiveSameSide++;
+        } else {
+          consecutiveSameSide = 0;
         }
-        if (attempts >= 20) {
-          newX = Math.max(0, Math.min(
-            this.width - platWidth,
-            sourcePlat.x + sourcePlat.width / 2 - platWidth / 2 + (Math.random() - 0.5) * 60
-          ));
-        }
+        lastZone = placedZone;
       }
 
       const platform: Platform = {
@@ -736,11 +792,11 @@ export class GameEngine {
           if (!this.isEndless && levelId <= 5 && type !== 'reward') {
             coinOffsetX = (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 12);
           }
-          const coin: Coin = {
+          const coin = {
             x: platCenterX + coinOffsetX,
             y: coinY,
             radius: COIN_RADIUS,
-            collected: false,
+            collected: false as const,
             angle: 0,
             ...(isMoving ? { linkedPlatform: platform, offsetX: coinOffsetX, offsetY: coinY - platform.y } : {}),
           };
