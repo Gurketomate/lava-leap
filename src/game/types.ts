@@ -100,6 +100,7 @@ export interface LevelDefinition {
   id: number;
   name: string;
   targetHeight: number;
+  coinTarget: number;
   normalChance: number;
   breakableChance: number;
   movingChance: number;

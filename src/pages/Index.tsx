@@ -60,11 +60,8 @@ const Index = () => {
       useGameStore.getState().gameOver();
     };
     engine.onLevelComplete = () => {
-      const totalSpawned = engine.totalCoinsSpawned;
-      const collected = engine.coinCount;
-      const coinPercent = totalSpawned > 0 ? collected / totalSpawned : 0;
       const gs = useGameStore.getState();
-      gs.setRunStats(engine.runDeaths, coinPercent, totalSpawned);
+      gs.setRunStats(engine.runDeaths, engine.coinCount);
       gs.completeLevel();
     };
     engine.onActiveEffectsUpdate = (effects: ActiveEffect[]) => {
