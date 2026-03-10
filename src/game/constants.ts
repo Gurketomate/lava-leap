@@ -104,12 +104,27 @@ function miniPeak(id: number, base: number, extra: number): number {
 export const LEVELS: LevelDefinition[] = (() => {
   const levels: LevelDefinition[] = [];
 
+  // Fixed coin targets per level — scales with level length/difficulty
+  const COIN_TARGETS: number[] = [
+    10, 12, 14, 15, 16,           // 1-5 (Intro)
+    17, 18, 19, 20, 21,           // 6-10 (Mid)
+    22, 23, 24, 25, 26,           // 11-15 (Mid)
+    27, 28, 29, 30, 31,           // 16-20 (Hard)
+    32, 33, 34, 35, 36,           // 21-25 (Hard)
+    37, 38, 39, 40, 41,           // 26-30 (Hard)
+    42, 43, 44, 45, 46,           // 31-35 (Elite)
+    47, 48, 49, 50, 51,           // 36-40 (Elite)
+    52, 53, 54, 55, 56,           // 41-45 (Elite)
+    57, 58, 59, 60, 65,           // 46-50 (Elite + final)
+  ];
+
   for (let id = 1; id <= 50; id++) {
     const t = (id - 1) / 49;
     const peak = id % 5 === 0;
 
     let name: string;
     let targetHeight: number;
+    let coinTarget: number = COIN_TARGETS[id - 1] || 20;
     let normalChance: number;
     let breakableChance: number;
     let movingChance: number;
