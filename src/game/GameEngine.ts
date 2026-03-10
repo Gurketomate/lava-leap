@@ -749,11 +749,11 @@ export class GameEngine {
           if (!this.isEndless && levelId <= 5 && type !== 'reward') {
             coinOffsetX = (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 12);
           }
-          const coin: Coin = {
+          const coin = {
             x: platCenterX + coinOffsetX,
             y: coinY,
             radius: COIN_RADIUS,
-            collected: false,
+            collected: false as const,
             angle: 0,
             ...(isMoving ? { linkedPlatform: platform, offsetX: coinOffsetX, offsetY: coinY - platform.y } : {}),
           };
