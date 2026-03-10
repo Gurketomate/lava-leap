@@ -329,6 +329,8 @@ export class GameEngine {
     this.score = 0;
     this.coinCount = 0;
     this.totalCoinsSpawned = 0;
+    this.nextCoinId = 0;
+    this.collectedCoinIds = new Set<number>();
     this.runDeaths = 0;
     this.platforms = [];
     this.coins = [];
