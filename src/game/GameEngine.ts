@@ -557,7 +557,8 @@ export class GameEngine {
     }
   }
 
-  private registerCoinSpawn(coin: Coin) {
+  private registerCoinSpawn(coinData: Omit<Coin, 'id'>) {
+    const coin: Coin = { ...coinData, id: this.nextCoinId++ };
     this.coins.push(coin);
     if (!this.levelCoinsFrozen) {
       this.totalCoinsSpawned++;
@@ -567,18 +568,26 @@ export class GameEngine {
   private freezeLevelCoinRegistration() {
     this.totalCoinsSpawned = this.coins.filter((coin) => !coin.collected).length;
     this.levelCoinsFrozen = true;
-    
   }
 
   private collectCoin(coin: Coin) {
+    // Strict single-collection: check both the coin flag AND our collected set
     if (coin.collected) return;
+    if (this.collectedCoinIds.has(coin.id)) return;
+    
     coin.collected = true;
-    this.coinCount++;
-    // Cap coinCount so it never exceeds coinTarget (level mode) or totalCoinsSpawned (endless)
-    const cap = this.currentLevelDef?.coinTarget ?? this.totalCoinsSpawned;
-    if (cap > 0) {
-      this.coinCount = Math.min(this.coinCount, cap);
+    this.collectedCoinIds.add(coin.id);
+    this.coinCount = this.collectedCoinIds.size;
+    
+    // Hard clamp: never exceed totalCoinsSpawned or coinTarget
+    const cap = Math.min(
+      this.totalCoinsSpawned,
+      this.currentLevelDef?.coinTarget ?? Infinity
+    );
+    if (cap > 0 && this.coinCount > cap) {
+      this.coinCount = cap;
     }
+    
     this.onCoinCollect(this.coinCount);
     this.spawnParticles(coin.x, coin.y, '#ffd700', 5);
     playCoin();
