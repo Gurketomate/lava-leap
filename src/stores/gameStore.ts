@@ -41,7 +41,7 @@ interface GameStore {
   setScreenShake: (shake: number) => void;
   setCurrentLevel: (level: number) => void;
   setGameMode: (mode: GameMode) => void;
-  setRunStats: (deaths: number, coinPercent: number, totalSpawned: number) => void;
+  setRunStats: (deaths: number, coinsCollected: number) => void;
   completeLevel: () => void;
   gameOver: () => void;
   resetRun: () => void;
