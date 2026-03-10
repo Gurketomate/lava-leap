@@ -731,13 +731,18 @@ export class GameEngine {
 
         if (coinCount <= 1) {
           const coinY = platform.y - 25;
+          // Early levels: offset coins to encourage horizontal movement
+          let coinOffsetX = 0;
+          if (!this.isEndless && levelId <= 5 && type !== 'reward') {
+            coinOffsetX = (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 12);
+          }
           const coin: Coin = {
-            x: platCenterX,
+            x: platCenterX + coinOffsetX,
             y: coinY,
             radius: COIN_RADIUS,
             collected: false,
             angle: 0,
-            ...(isMoving ? { linkedPlatform: platform, offsetX: 0, offsetY: coinY - platform.y } : {}),
+            ...(isMoving ? { linkedPlatform: platform, offsetX: coinOffsetX, offsetY: coinY - platform.y } : {}),
           };
           this.registerCoinSpawn(coin);
         } else {
