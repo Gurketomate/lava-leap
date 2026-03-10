@@ -1221,7 +1221,7 @@ export class GameEngine {
         stopMusic();
         stopLavaSound();
         playDeath();
-        console.log(`[CoinDebug] Game over (lava) — collected: ${this.coinCount}, totalSpawned: ${this.totalCoinsSpawned}`);
+        
         this.onGameOver({ score: this.score, coins: this.coinCount });
         return;
       }
