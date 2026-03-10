@@ -570,13 +570,12 @@ export class GameEngine {
     if (coin.collected) return;
     coin.collected = true;
     this.coinCount++;
-    // Cap coinCount at coinTarget for level mode so display never exceeds target
-    const coinTarget = this.currentLevelDef?.coinTarget;
-    if (coinTarget && this.coinCount > coinTarget) {
-      this.coinCount = coinTarget;
+    // Cap coinCount so it never exceeds coinTarget (level mode) or totalCoinsSpawned (endless)
+    const cap = this.currentLevelDef?.coinTarget ?? this.totalCoinsSpawned;
+    if (cap > 0) {
+      this.coinCount = Math.min(this.coinCount, cap);
     }
     this.onCoinCollect(this.coinCount);
-    console.log(`[CoinDebug] collectedCoins update — ${this.coinCount}/${coinTarget ?? this.totalCoinsSpawned}`);
     this.spawnParticles(coin.x, coin.y, '#ffd700', 5);
     playCoin();
   }
