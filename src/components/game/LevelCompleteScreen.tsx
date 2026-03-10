@@ -3,6 +3,7 @@ import { useGameStore } from '@/stores/gameStore';
 import { useAdStore } from '@/stores/adStore';
 import { useSoundClick } from '@/hooks/useSoundClick';
 import EmberBackground from '@/components/game/EmberBackground';
+import { LEVELS } from '@/game/constants';
 
 interface LevelCompleteScreenProps {
   onNextLevel: () => void;
@@ -22,23 +23,22 @@ const STAR_LABELS = [
 ];
 
 const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) => {
-  const { score, coins, currentLevel, lastRunStars, runCoinPercent, runDeaths, runTotalCoinsSpawned } = useGameStore();
+  const { score, coins, currentLevel, lastRunStars, runCoinsCollected, runDeaths } = useGameStore();
   const { canShowMilestoneInterstitial, showInterstitial } = useAdStore();
   const [adShown, setAdShown] = useState(false);
-  const [animPhase, setAnimPhase] = useState(0); // 0=coins, 1=star1, 2=star2, 3=star3, 4=done
+  const [animPhase, setAnimPhase] = useState(0);
 
   const handleNextLevel = useSoundClick(onNextLevel);
   const handleMenu = useSoundClick(onMenu);
 
-  const coinPct = Math.round(runCoinPercent * 100);
-  const coinsCollected = coins;
-  const coinsTotal = runTotalCoinsSpawned > 0 ? runTotalCoinsSpawned : (coinPct > 0 ? Math.round(coins / (runCoinPercent || 1)) : coins);
+  const levelDef = LEVELS.find(l => l.id === currentLevel);
+  const coinTarget = levelDef?.coinTarget ?? 20;
+  const coinTarget60 = Math.floor(coinTarget * 0.6);
 
-  // Star conditions
   const conditions: StarCondition[] = [
     { label: 'Complete the level', met: true },
-    { label: 'Collect ≥60% coins', met: runCoinPercent >= 0.60 },
-    { label: '≥85% coins + 0 deaths', met: runCoinPercent >= 0.85 && runDeaths === 0 },
+    { label: `Collect ≥${coinTarget60} coins`, met: runCoinsCollected >= coinTarget60 },
+    { label: `Collect ${coinTarget} coins + 0 deaths`, met: runCoinsCollected >= coinTarget && runDeaths === 0 },
   ];
 
   useEffect(() => {
@@ -50,13 +50,12 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
     }
   }, [currentLevel, adShown, canShowMilestoneInterstitial, showInterstitial]);
 
-  // Staggered animation phases
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
-    timers.push(setTimeout(() => setAnimPhase(1), 400));   // star 1
-    timers.push(setTimeout(() => setAnimPhase(2), 900));   // star 2
-    timers.push(setTimeout(() => setAnimPhase(3), 1400));  // star 3
-    timers.push(setTimeout(() => setAnimPhase(4), 1800));  // done
+    timers.push(setTimeout(() => setAnimPhase(1), 400));
+    timers.push(setTimeout(() => setAnimPhase(2), 900));
+    timers.push(setTimeout(() => setAnimPhase(3), 1400));
+    timers.push(setTimeout(() => setAnimPhase(4), 1800));
     return () => timers.forEach(clearTimeout);
   }, []);
 
@@ -80,12 +79,7 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
         <div className="glass-panel px-6 py-3 text-center">
           <p className="text-xs text-muted-foreground font-body uppercase tracking-wider mb-1">Coins Collected</p>
           <p className="text-3xl font-display font-bold text-accent coin-glow">
-            {coinsCollected} <span className="text-lg text-muted-foreground">/ {coinsTotal}</span>
-          </p>
-          <p className={`text-sm font-display font-bold mt-1 ${
-            coinPct >= 85 ? 'text-accent' : coinPct >= 60 ? 'text-foreground' : 'text-muted-foreground'
-          }`}>
-            {coinPct}%
+            {runCoinsCollected} <span className="text-lg text-muted-foreground">/ {coinTarget}</span>
           </p>
         </div>
 
@@ -103,7 +97,6 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
                   revealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
                 }`}
               >
-                {/* Star icon with animation */}
                 <div className="relative flex-shrink-0">
                   <span
                     className={`text-3xl block transition-all duration-500 ${
@@ -117,7 +110,6 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
                   >
                     ⭐
                   </span>
-                  {/* Coin-to-star burst effect */}
                   {revealed && earned && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       {[...Array(4)].map((_, j) => (
@@ -139,7 +131,6 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
                   )}
                 </div>
 
-                {/* Condition text */}
                 <div className="flex-1">
                   <p className={`text-sm font-display font-semibold transition-colors duration-300 ${
                     revealed && earned ? 'text-accent' : revealed ? 'text-muted-foreground' : 'text-transparent'
@@ -151,7 +142,6 @@ const LevelCompleteScreen = ({ onNextLevel, onMenu }: LevelCompleteScreenProps) 
                   )}
                 </div>
 
-                {/* Check mark */}
                 <div className={`text-lg transition-all duration-300 ${
                   revealed ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
                 }`}>

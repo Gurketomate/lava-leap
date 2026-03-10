@@ -218,7 +218,7 @@ export const LEVELS: LevelDefinition[] = (() => {
     }
 
     levels.push({
-      id, name, targetHeight,
+      id, name, targetHeight, coinTarget,
       normalChance, breakableChance, movingChance, rewardChance,
       platformWidthMod, lavaSpeedMod, lavaEndAccel,
       lavaControlChance, dangerChance,

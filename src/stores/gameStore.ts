@@ -176,8 +176,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     phase: 1,
     screenShake: 0,
     runDeaths: 0,
-    runCoinPercent: 0,
-    runTotalCoinsSpawned: 0,
+    runCoinsCollected: 0,
     lastRunStars: 0,
   }),
 
