@@ -586,6 +586,9 @@ export class GameEngine {
     const widthMod = endlessDiff ? endlessDiff.platformWidthMod : (this.currentLevelDef?.platformWidthMod ?? 1);
     const levelId = this.currentLevelDef?.id ?? 1;
 
+    // Track alternation side for early levels (forces horizontal movement)
+    let lastSide: 'left' | 'right' | 'center' = 'center';
+
     while (this.highestPlatformY > targetY) {
       const gapScale = this.isEndless ? (endlessDiff?.gapScale ?? 1.0) : getGapScale(levelId);
       const scaledGapMax = PLATFORM_GAP_MIN + (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN) * gapScale;
