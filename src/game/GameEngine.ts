@@ -84,6 +84,8 @@ export class GameEngine {
   coinCount = 0;
   totalCoinsSpawned = 0;
   levelCoinsFrozen = false;
+  nextCoinId = 0;
+  collectedCoinIds = new Set<number>();
   runDeaths = 0;
   maxHeight = 0;
   startY = 0;
