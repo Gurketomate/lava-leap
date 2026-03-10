@@ -29,8 +29,7 @@ interface GameStore {
 
   // Star tracking per run
   runDeaths: number;
-  runCoinPercent: number;
-  runTotalCoinsSpawned: number;
+  runCoinsCollected: number;
   lastRunStars: number;
   levelStars: LevelStars;
 
