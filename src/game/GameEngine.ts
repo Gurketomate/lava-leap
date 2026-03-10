@@ -614,7 +614,35 @@ export class GameEngine {
       const platWidth = baseWidth * widthMod;
 
       const sourcePlat = lastPlatform || this.platforms[this.platforms.length - 1];
-      if (sourcePlat) {
+
+      // Early levels (1-5): force horizontal alternation so the player can't just go straight up
+      if (!this.isEndless && levelId <= 5 && sourcePlat) {
+        const mid = this.width / 2;
+        const sourceCenter = sourcePlat.x + sourcePlat.width / 2;
+        const margin = platWidth * 0.6; // minimum horizontal offset from source
+
+        if (lastSide === 'center' || lastSide === 'right') {
+          // Place left
+          const maxX = Math.max(0, Math.min(sourceCenter - margin, this.width * 0.4));
+          newX = Math.random() * maxX;
+          lastSide = 'left';
+        } else {
+          // Place right
+          const minX = Math.min(this.width - platWidth, Math.max(sourceCenter + margin, this.width * 0.5));
+          newX = minX + Math.random() * (this.width - platWidth - minX);
+          lastSide = 'right';
+        }
+        // Clamp and verify reachability
+        newX = Math.max(0, Math.min(this.width - platWidth, newX));
+        if (!isPlatformReachable(sourcePlat.x, sourcePlat.width, sourcePlat.y, newX, platWidth, newY, this.reachability)) {
+          // Fallback: offset from source center
+          const dir = lastSide === 'left' ? -1 : 1;
+          newX = Math.max(0, Math.min(
+            this.width - platWidth,
+            sourceCenter + dir * (40 + Math.random() * 60) - platWidth / 2
+          ));
+        }
+      } else if (sourcePlat) {
         let attempts = 0;
         while (
           attempts < 20 &&
