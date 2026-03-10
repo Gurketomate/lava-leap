@@ -125,10 +125,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setCurrentLevel: (currentLevel) => set({ currentLevel }),
   setGameMode: (gameMode) => set({ gameMode }),
 
-  setRunStats: (deaths, coinPercent, totalSpawned) => set({ runDeaths: deaths, runCoinPercent: coinPercent, runTotalCoinsSpawned: totalSpawned }),
+  setRunStats: (deaths, coinsCollected) => set({ runDeaths: deaths, runCoinsCollected: coinsCollected }),
 
   completeLevel: () => {
     const s = get();
+    const levelDef = LEVELS.find(l => l.id === s.currentLevel);
+    const coinTarget = levelDef?.coinTarget ?? 20;
     const newUnlocked = Math.min(LEVELS.length, Math.max(s.maxUnlockedLevel, s.currentLevel + 1));
     const newHigh = Math.max(s.highScore, s.score);
     const newTotal = s.totalCoins + s.coins;
@@ -136,8 +138,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (newLevels['startShield'] > 0) newLevels['startShield'] = 0;
 
     let stars = 1;
-    if (s.runCoinPercent >= 0.85 && s.runDeaths === 0) stars = 3;
-    else if (s.runCoinPercent >= 0.60) stars = 2;
+    if (s.runCoinsCollected >= coinTarget && s.runDeaths === 0) stars = 3;
+    else if (s.runCoinsCollected >= Math.floor(coinTarget * 0.6)) stars = 2;
 
     const newLevelStars = { ...s.levelStars };
     const prev = newLevelStars[s.currentLevel] || 0;
