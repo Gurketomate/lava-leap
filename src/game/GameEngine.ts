@@ -563,20 +563,19 @@ export class GameEngine {
   private freezeLevelCoinRegistration() {
     this.totalCoinsSpawned = this.coins.filter((coin) => !coin.collected).length;
     this.levelCoinsFrozen = true;
-    console.log(`[CoinDebug] Level ${this.currentLevelDef?.id ?? '?'} start — final spawned coins: ${this.totalCoinsSpawned}`);
+    
   }
 
   private collectCoin(coin: Coin) {
     if (coin.collected) return;
     coin.collected = true;
     this.coinCount++;
-    // Cap coinCount at coinTarget for level mode so display never exceeds target
-    const coinTarget = this.currentLevelDef?.coinTarget;
-    if (coinTarget && this.coinCount > coinTarget) {
-      this.coinCount = coinTarget;
+    // Cap coinCount so it never exceeds coinTarget (level mode) or totalCoinsSpawned (endless)
+    const cap = this.currentLevelDef?.coinTarget ?? this.totalCoinsSpawned;
+    if (cap > 0) {
+      this.coinCount = Math.min(this.coinCount, cap);
     }
     this.onCoinCollect(this.coinCount);
-    console.log(`[CoinDebug] collectedCoins update — ${this.coinCount}/${coinTarget ?? this.totalCoinsSpawned}`);
     this.spawnParticles(coin.x, coin.y, '#ffd700', 5);
     playCoin();
   }
@@ -586,6 +585,9 @@ export class GameEngine {
     const endlessDiff = this.isEndless ? this.getEndlessDifficulty() : null;
     const widthMod = endlessDiff ? endlessDiff.platformWidthMod : (this.currentLevelDef?.platformWidthMod ?? 1);
     const levelId = this.currentLevelDef?.id ?? 1;
+
+    // Track alternation side for early levels (forces horizontal movement)
+    let lastSide: 'left' | 'right' | 'center' = 'center';
 
     while (this.highestPlatformY > targetY) {
       const gapScale = this.isEndless ? (endlessDiff?.gapScale ?? 1.0) : getGapScale(levelId);
@@ -612,7 +614,35 @@ export class GameEngine {
       const platWidth = baseWidth * widthMod;
 
       const sourcePlat = lastPlatform || this.platforms[this.platforms.length - 1];
-      if (sourcePlat) {
+
+      // Early levels (1-5): force horizontal alternation so the player can't just go straight up
+      if (!this.isEndless && levelId <= 5 && sourcePlat) {
+        const mid = this.width / 2;
+        const sourceCenter = sourcePlat.x + sourcePlat.width / 2;
+        const margin = platWidth * 0.6; // minimum horizontal offset from source
+
+        if (lastSide === 'center' || lastSide === 'right') {
+          // Place left
+          const maxX = Math.max(0, Math.min(sourceCenter - margin, this.width * 0.4));
+          newX = Math.random() * maxX;
+          lastSide = 'left';
+        } else {
+          // Place right
+          const minX = Math.min(this.width - platWidth, Math.max(sourceCenter + margin, this.width * 0.5));
+          newX = minX + Math.random() * (this.width - platWidth - minX);
+          lastSide = 'right';
+        }
+        // Clamp and verify reachability
+        newX = Math.max(0, Math.min(this.width - platWidth, newX));
+        if (!isPlatformReachable(sourcePlat.x, sourcePlat.width, sourcePlat.y, newX, platWidth, newY, this.reachability)) {
+          // Fallback: offset from source center
+          const dir = lastSide === 'left' ? -1 : 1;
+          newX = Math.max(0, Math.min(
+            this.width - platWidth,
+            sourceCenter + dir * (40 + Math.random() * 60) - platWidth / 2
+          ));
+        }
+      } else if (sourcePlat) {
         let attempts = 0;
         while (
           attempts < 20 &&
@@ -701,13 +731,18 @@ export class GameEngine {
 
         if (coinCount <= 1) {
           const coinY = platform.y - 25;
+          // Early levels: offset coins to encourage horizontal movement
+          let coinOffsetX = 0;
+          if (!this.isEndless && levelId <= 5 && type !== 'reward') {
+            coinOffsetX = (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 12);
+          }
           const coin: Coin = {
-            x: platCenterX,
+            x: platCenterX + coinOffsetX,
             y: coinY,
             radius: COIN_RADIUS,
             collected: false,
             angle: 0,
-            ...(isMoving ? { linkedPlatform: platform, offsetX: 0, offsetY: coinY - platform.y } : {}),
+            ...(isMoving ? { linkedPlatform: platform, offsetX: coinOffsetX, offsetY: coinY - platform.y } : {}),
           };
           this.registerCoinSpawn(coin);
         } else {
@@ -781,7 +816,7 @@ export class GameEngine {
       this.cameraY += (targetCameraY - this.cameraY) * 0.03;
       if (this.levelCompleteTimer > 1.5) {
         this.running = false;
-        console.log(`[CoinDebug] Level complete — collected: ${this.coinCount}, totalSpawned: ${this.totalCoinsSpawned}`);
+        
         this.onLevelComplete({ score: this.score, coins: this.coinCount });
       }
       return;
@@ -1094,7 +1129,7 @@ export class GameEngine {
       item.y = plat.y + (item.offsetY ?? -20);
     }
 
-    // Coin collection
+    // Coin collection — tighter collision radius to match visual size
     for (const coin of this.coins) {
       if (coin.collected) continue;
       const dx = (p.x + p.width / 2) - coin.x;
@@ -1114,8 +1149,10 @@ export class GameEngine {
         coin.y += (ny + perpY) * speed;
       }
 
-      if (dist < coin.radius + 20) {
+      // Collision radius: coin.radius (10) + 8 = 18px — matches visual coin size
+      if (dist < coin.radius + 8) {
         this.collectCoin(coin);
+        continue; // skip angle update for collected coin
       }
       coin.angle += dt * 3;
     }
@@ -1184,7 +1221,7 @@ export class GameEngine {
         stopMusic();
         stopLavaSound();
         playDeath();
-        console.log(`[CoinDebug] Game over (lava) — collected: ${this.coinCount}, totalSpawned: ${this.totalCoinsSpawned}`);
+        
         this.onGameOver({ score: this.score, coins: this.coinCount });
         return;
       }
@@ -1202,7 +1239,7 @@ export class GameEngine {
         stopMusic();
         stopLavaSound();
         playDeath();
-        console.log(`[CoinDebug] Game over (fall) — collected: ${this.coinCount}, totalSpawned: ${this.totalCoinsSpawned}`);
+        
         this.onGameOver({ score: this.score, coins: this.coinCount });
         return;
       }
