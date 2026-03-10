@@ -816,7 +816,7 @@ export class GameEngine {
       this.cameraY += (targetCameraY - this.cameraY) * 0.03;
       if (this.levelCompleteTimer > 1.5) {
         this.running = false;
-        console.log(`[CoinDebug] Level complete — collected: ${this.coinCount}, totalSpawned: ${this.totalCoinsSpawned}`);
+        
         this.onLevelComplete({ score: this.score, coins: this.coinCount });
       }
       return;
