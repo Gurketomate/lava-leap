@@ -1093,7 +1093,7 @@ export class GameEngine {
       item.y = plat.y + (item.offsetY ?? -20);
     }
 
-    // Coin collection
+    // Coin collection — tighter collision radius to match visual size
     for (const coin of this.coins) {
       if (coin.collected) continue;
       const dx = (p.x + p.width / 2) - coin.x;
@@ -1113,8 +1113,10 @@ export class GameEngine {
         coin.y += (ny + perpY) * speed;
       }
 
-      if (dist < coin.radius + 20) {
+      // Collision radius: coin.radius (10) + 8 = 18px — matches visual coin size
+      if (dist < coin.radius + 8) {
         this.collectCoin(coin);
+        continue; // skip angle update for collected coin
       }
       coin.angle += dt * 3;
     }
