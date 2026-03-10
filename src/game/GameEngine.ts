@@ -563,7 +563,7 @@ export class GameEngine {
   private freezeLevelCoinRegistration() {
     this.totalCoinsSpawned = this.coins.filter((coin) => !coin.collected).length;
     this.levelCoinsFrozen = true;
-    console.log(`[CoinDebug] Level ${this.currentLevelDef?.id ?? '?'} start — final spawned coins: ${this.totalCoinsSpawned}`);
+    
   }
 
   private collectCoin(coin: Coin) {
